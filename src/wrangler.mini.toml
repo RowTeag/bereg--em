@@ -1,0 +1,8 @@
+name = "bereg-mini-crm"
+main = "cloudflare/mini-worker.mjs"
+compatibility_date = "2026-11-18"
+workers_dev = true
+
+[[services]]
+binding = "CRM"
+service = "bereg-crm"

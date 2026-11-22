@@ -1,0 +1,33 @@
+name = "bereg-crm"
+main = "cloudflare/worker.mjs"
+compatibility_date = "2026-08-04"
+compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]
+workers_dev = true
+
+[version_metadata]
+binding = "CF_VERSION_METADATA"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+
+[ai]
+binding = "AI"
+
+[[durable_objects.bindings]]
+name = "APP"
+class_name = "BeregRuntime"
+
+[durable_objects.code_update_strategy]
+mode = "immediate"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BeregRuntime"]
+
+[vars]
+APP_DATA_DIR = "/tmp/bereg-crm-data"
+BEREG_CLOUDFLARE = "1"
+NODE_ENV = "production"

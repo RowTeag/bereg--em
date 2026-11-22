@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BEREG · Workspace</title>
+    <link rel="stylesheet" href="./styles.css?v=22" />
+  <link rel="stylesheet" href="/workspace.css?v=9" />
+    <link rel="stylesheet" href="/crm-notice.css?v=1" />
+    <link rel="stylesheet" href="/inbox-notifications.css?v=2" />
+    <link rel="stylesheet" href="/content-plan.css?v=1" />
+    <link rel="stylesheet" href="/business.css?v=1" />
+  <link rel="stylesheet" href="/redesign.css?v=9" />
+  <link rel="stylesheet" href="/polish.css?v=1" />
+  <link rel="stylesheet" href="/crm-tests.css"></head>
+  <body class="auth-loading feature-loading">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="workspace-logo" src="/assets/telegram/client.png" alt="BEREG">
+          <div>
+            <div class="brand-name">BEREG</div>
+            <div class="brand-subtitle">Рабочая панель</div>
+          </div>
+          <button id="mobileMenuBtn" class="mobile-menu-btn" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="mainNav"><span></span><span></span><span></span></button>
+        </div>
+
+        <nav id="mainNav" class="nav">
+          <button class="nav-item nav-home active" data-target="dashboard"><span class="nav-icon">⌂</span><span>Обзор</span></button>
+          <div class="nav-group" data-nav-group="clients">
+            <button class="nav-group-toggle" type="button" aria-expanded="false"><span class="nav-icon">◎</span><span>Клиенты</span><span class="nav-chevron">⌄</span></button>
+            <div class="nav-group-items">
+              <button class="nav-item" data-target="clients"><span>Клиенты</span></button>
+<button class="nav-item" data-target="inbox"><span>Обращения</span></button>
+              <button class="nav-item" data-target="telegram-support"><span>Каналы поддержки</span></button>
+            </div>
+          </div>
+          <a class="nav-item mini-crm-link" href="https://bereg-mini-crm.smm-panel.workers.dev/"><span class="nav-icon">↗</span><span>Мини CRM</span></a>
+          <div class="nav-group" data-nav-group="publishing">
+            <button class="nav-group-toggle" type="button" aria-expanded="false"><span class="nav-icon">＋</span><span>Публикации</span><span class="nav-chevron">⌄</span></button>
+            <div class="nav-group-items">
+              <button class="nav-item" data-target="content"><span>Контент</span></button>
+              <button class="nav-item" data-target="calendar"><span>Календарь</span></button>
+              <button class="nav-item" data-target="youtube-publish"><span>YouTube</span></button>
+            </div>
+          </div>
+          <div class="nav-group" data-nav-group="insights">
+            <button class="nav-group-toggle" type="button" aria-expanded="false"><span class="nav-icon">↗</span><span>Развитие</span><span class="nav-chevron">⌄</span></button>
+            <div class="nav-group-items">
+              <button class="nav-item" data-target="growth-center"><span>Рост и продажи</span></button>
+              <button class="nav-item" data-target="analytics"><span>Аналитика</span></button>
+              <button class="nav-item" data-target="advisor"><span>AI-советник</span></button>
+            </div>
+          </div>
+          <div class="nav-group" data-nav-group="management">
+            <button class="nav-group-toggle" type="button" aria-expanded="false"><span class="nav-icon">⚙</span><span>Управление</span><span class="nav-chevron">⌄</span></button>
+            <div class="nav-group-items">
+              <button class="nav-item" data-target="team-access" data-super-only><span>Команда и доступ</span></button>
+              <button class="nav-item" data-target="employees" data-admin-only><span>Employees</span></button>
+              <button class="nav-item" data-target="settings"><span>Настройки</span></button>
+            </div>
+          </div>
+        </nav>
+
+        <div class="workspace-account"><span id="workspaceName"></span><small id="workspaceRole"></small><button id="logoutBtn" type="button">Выйти из аккаунта ↗</button></div>
+        <div class="sidebar-card accent">
+          <span id="liveDataBadge" class="chip light">Проверка</span>
+          <h4>Состояние кампании</h4>
+          <p id="liveDataSummary">Загружаю показатели подключённых каналов…</p>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <details id="reservioCalendar"><summary>Записи Reservio</summary>
+<form id="reservioImport"><label>Календарь Reservio (.ics) <input type="file" accept=".ics,text/calendar" required></label><button>Импортировать записи</button></form><p id="reservioStatus" role="status"></p><div id="reservioBookings"></div></details>
+<details id="caseReport"><summary>Отчёт по оплатам за период</summary><button type="button" class="crm-test-button" data-crm-test="payments" aria-label="Тест: пример отчёта" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span>
+<label>С <input type="date" id="reportFrom"></label><label>По <input type="date" id="reportTo"></label><div id="caseTotals"></div></details><details><summary>Фильтры клиентов</summary><form id="clientFilters">
+<label>Услуга <input name="service"></label><label>Страна <input name="country"></label>
+<label>Статус дела <input name="caseStatus"></label><label>Язык <select name="language"><option value="">Все</option><option value="uk">Українська</option><option value="hu">Magyar</option><option value="ru">Русский</option><option value="en">English</option></select></label>
+<label>Активный заказ <select name="activeOrder"><option value="">Все</option><option value="yes">Да</option><option value="no">Нет</option></select></label>
+<label>Обращение с <input name="from" type="date"></label><label>По <input name="to" type="date"></label>
+<label>История <select name="history"><option value="">Все</option><option value="paid">Ранее платили</option><option value="unpaid">Без записанных оплат</option></select></label>
+<button type="reset">Сбросить</button></form></details><details><summary>Рассылка выбранной группе</summary><form id="campaignForm"><label>Сообщение подписчикам Telegram <textarea name="message" maxlength="3200" required></textarea></label>
+<p>Получатели выбираются фильтрами списка. Для подписки клиент отправляет боту /subscribe, для отмены — /unsubscribe.</p><button>Отправить подписчикам</button></form><p id="campaignStatus" role="status"></p></details><div id="expiryWarnings" role="status"></div><div id="crmNewClientNotice" class="crm-notice" role="status" aria-live="polite" hidden></div>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">BEREG OUTSOURCE GROUP / WORKSPACE</p>
+            <h1 id="pageTitle">Панель управления</h1>
+          </div>
+          <label class="language-picker"><span>Language</span><select id="crmLanguage" aria-label="CRM language"><option value="en">English</option><option value="ru">Русский</option><option value="uk">Українська</option><option value="vi">Tiếng Việt</option></select></label>
+          <div class="topbar-actions">
+            <button id="exportBtn" class="ghost-btn" type="button">Экспорт</button>
+            <button id="newPostBtn" class="primary-btn" type="button">+ Новый пост</button>
+          </div>
+        </header>
+
+        <section id="team-access" class="section-panel" data-super-only>
+          <div class="workspace-intro"><span class="workspace-kicker">КОМАНДА</span><h2>Каждому — свой доступ.</h2><p>Создавайте личные аккаунты и управляйте доступом сотрудников. Владелец видит все разделы и обращения.</p></div>
+          <div class="role-cards"><article><span>01</span><h3>Суперадминистратор</h3><p>Все данные, настройки, подключения и управление аккаунтами.</p><b>Ваш уровень доступа</b></article><article><span>02</span><h3>Администратор</h3><p>Контент, аналитика, все обращения и Telegram-операторы.</p></article><article><span>03</span><h3>Оператор</h3><p>Только закреплённые клиенты, переписка и закрытие обращений.</p></article></div>
+          <div class="access-grid"><article class="card"><h3>Новый сотрудник</h3><form id="createUserForm" class="workspace-form"><label>Имя<input name="name" required maxlength="70" placeholder="Анна Иванова"></label><label>Логин<input name="username" required pattern="[a-zA-Z0-9_.-]{3,40}" placeholder="anna.ivanova" autocomplete="off"></label><label>Роль<select name="role"><option value="admin">Администратор</option><option value="operator">Оператор</option></select></label><label id="operatorLinkLabel" hidden>Telegram-оператор<select name="operatorId" id="operatorLink"></select><small>Если оставить новый оператор, бот создаст Telegram-доступ автоматически и покажет оба пароля.</small></label><button class="primary-btn">Создать аккаунт</button></form><p id="newUserResult" role="status"></p></article><article class="card"><div class="card-header"><h3>Участники команды</h3><button id="refreshUsers" class="ghost-btn">Обновить</button></div><div id="workspaceUsers"></div></article></div>
+        </section>
+        <section id="clients" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">BEREG · КЛИЕНТЫ</span><h2>Клиенты и анкеты</h2><p>Анкета с сайта BEREG. Укажите телефон с кодом страны; номера документов не нужны.</p></div><div id="inboxOverdue" role="status"></div><div class="inbox-toolbar"><button type="button" class="crm-test-button" data-crm-test="inbox" aria-label="Тест: пример переписки" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span><input id="crmSearch" placeholder="Поиск по имени или телефону"><button id="crmNew" class="primary-btn">Добавить клиента</button><button id="crmRefresh" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="crmList"></aside><article class="card" style="padding:24px"><h3 id="crmTitle">Новый клиент</h3><form id="crmForm" class="workspace-form"><label>Фамилия<input name="last" type="text" maxlength="70" required></label><label>Имя<input name="first" type="text" maxlength="70" required></label><label>Язык клиента<select name="language"><option value="">Не выбран</option><option value="ru">Русский</option><option value="uk">Українська</option><option value="en">English</option><option value="hu">Magyar</option><option value="vi">Tiếng Việt</option></select></label><label>Услуга <input name="service" maxlength="120"></label><label>Страна проживания <input name="country" maxlength="80"></label>
+<label>Статус дела <input name="caseStatus" maxlength="80"></label><label>Активный заказ <select name="activeOrder"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><label>Ваш текущий статус в Венгрии<input name="status" type="text" maxlength="100" ></label><label>С какими документами вы в Венгрии?<input name="papers" type="text" maxlength="150" ></label><label>Дата выезда из Украины<input name="departure" type="date" maxlength="10" ></label><label>Номер телефона для связи<input name="contact" type="tel" maxlength="90" required></label><label>Кратко опишите вашу ситуацию<textarea name="details" maxlength="300" rows="3"></textarea></label><label>Нужна помощь с жильём<select name="housing"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><label>Нужно финансирование имеющегося жилья<select name="funding"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><label>Нужна бесплатная консультация<select name="consultation"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><label>Нужна помощь с восстановлением украинских документов<select name="documents"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><button class="primary-btn">Сохранить анкету</button></form><p id="crmStatus" role="status"></p><form id="officeUpload" hidden>
+<label>Документ из офиса (PDF, JPEG, PNG до 5 МБ)<input type="file" name="scan" accept=".pdf,.jpg,.jpeg,.png" required></label>
+<label>Действителен до <input type="date" name="expiry"></label>
+<button class="ghost-btn">Прикрепить к карточке</button></form><div id="crmDocuments"></div><button type="button" class="crm-test-button" data-crm-test="documents" aria-label="Тест: пример срока документа" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span><div id="crmDialogs"></div><div id="casework" hidden>
+<details><summary>Оплаты клиента</summary><div id="casePayments"></div>
+<form id="casePayForm"><label>Услуга <input name="service" maxlength="120" required></label>
+<label>Сумма <input type="number" name="amount" min="0.01" step="0.01" required></label>
+<label>Валюта <select name="currency"><option>HUF</option><option>EUR</option><option>UAH</option><option>USD</option></select></label>
+<label>Способ <select name="method"><option value="cash">Наличные</option><option value="bank">Безналичные</option></select></label>
+<label>Дата оплаты <input type="date" name="date" required></label><button>Записать оплату</button></form></details>
+<details><summary>Запрос документов и напоминание</summary><button type="button" class="crm-test-button" data-crm-test="deadlines" aria-label="Тест: пример напоминания" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span><div id="caseRequests"></div>
+<form id="caseRequestForm"><label>Диалог клиента <select name="dialogId" required></select></label>
+<label>Что нужно прислать <textarea name="text" maxlength="3200" required></textarea></label>
+<label>Срок подачи <input type="date" name="due" required></label><label>Дата напоминания <input type="date" name="remind" required></label>
+<button>Отправить запрос и запланировать напоминание</button></form></details></div></article></div></section>
+        <section id="inbox" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">КЛИЕНТСКИЙ СЕРВИС</span><h2>Диалоги, которые важны.</h2><p id="inboxScope">Обращения ваших клиентов — от первого вопроса до решения.</p></div><div id="inboxNewMessageNotice" class="crm-notice" role="status" aria-live="polite" hidden></div><div class="inbox-toolbar"><input id="inboxSearch" placeholder="Найти клиента или сообщение" aria-label="Поиск обращений"><select id="inboxFilter" aria-label="Статус обращения"><option value="active">Активные</option><option value="all">Все обращения</option><option value="closed">Закрытые</option></select><button id="enableInboxNotifications" class="ghost-btn audio-button" type="button">🔔 Включить звук</button><button id="refreshInbox" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="inboxList"></aside><article class="card inbox-dialog"><div id="inboxConversation"><div class="workspace-empty">Выберите обращение слева<br><small>Здесь появится история переписки.</small></div></div><details id="replyTemplates">
+  <summary>Шаблоны ответов и списки документов</summary>
+  <label>Язык
+    <select id="replyTemplateLanguage"><option value="uk">Українська</option><option value="hu">Magyar</option><option value="ru">Русский</option><option value="en">English</option></select>
+  </label>
+  <label>Шаблон <select id="replyTemplateSelect"></select></label>
+  <pre id="replyTemplatePreview" style="white-space:pre-wrap"></pre>
+  <button class="ghost-btn" type="button" id="copyReplyTemplate">Скопировать</button>
+  <button class="ghost-btn" type="button" id="insertReplyTemplate">Вставить в ответ</button>
+  <form id="replyTemplateEditor" data-admin-only hidden>
+    <button class="ghost-btn" type="button" id="editReplyTemplate">Редактировать выбранный</button>
+    <button class="ghost-btn" type="reset">Новый шаблон</button>
+    <label>Автоотправка <select name="event"><option value="">Только вручную</option><option value="first">При первом обращении</option><option value="phrase">При точной фразе клиента</option><option value="status">При изменении статуса дела</option></select></label>
+<label>Фраза клиента или новый статус <input name="match" maxlength="120"></label>
+<label>Название или тип запроса <input name="title" maxlength="120" required></label>
+    <label>Ответ <textarea name="text" maxlength="3500" rows="3"></textarea></label>
+    <label>Необходимые документы <textarea name="documents" maxlength="3500" rows="3"></textarea></label>
+    <button class="ghost-btn" type="submit">Сохранить шаблон</button>
+  </form>
+  <p id="replyTemplateStatus" role="status"></p>
+</details>
+<form id="inboxReplyForm" hidden><label for="inboxReply">Ответ клиенту</label><textarea id="inboxReply" name="message" maxlength="3500" rows="3" required placeholder="Напишите ответ…"></textarea><div class="inbox-reply-actions"><button class="primary-btn">Отправить ответ</button><button class="ghost-btn" type="button" id="closeTicket">Закрыть обращение</button></div></form><p id="inboxStatus" role="status"></p></article></div></section>
+        <section id="employees" class="section-panel" data-admin-only>
+          <div class="workspace-intro"><span class="workspace-kicker">TEAM MANAGEMENT</span><h2>Employees</h2><p>Maintain staff records separately from CRM login accounts.</p></div>
+          <div class="business-grid"><article class="card"><h3 id="employeeFormTitle">Add employee</h3><form id="employeeForm" class="business-form"><input name="id" type="hidden"><label>Full name<input name="name" maxlength="100" required></label><label>Position<input name="position" maxlength="100" required></label><label>Work email<input name="workEmail" type="email" maxlength="160"></label><label>Work phone<input name="workPhone" type="tel" maxlength="40"></label><label>Start date<input name="startDate" type="date"></label><label>Status<select name="status"><option value="active">Active</option><option value="inactive">Inactive</option></select></label><label>Notes<textarea name="notes" rows="3" maxlength="1000"></textarea></label><div class="business-actions"><button class="primary-btn">Save employee</button><button id="employeeCancel" class="ghost-btn" type="button">Cancel</button></div></form><p id="employeeStatus" role="status"></p></article><article class="card"><div class="card-header"><h3>Staff directory</h3><button id="refreshEmployees" class="ghost-btn" type="button">Refresh</button></div><div class="business-table-wrap"><table><thead><tr><th>Name</th><th>Position</th><th>Contact</th><th>Start date</th><th>Status</th><th></th></tr></thead><tbody id="employeeRows"></tbody></table></div></article></div>
+        </section>
+        <section id="dashboard" class="section-panel active">
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span class="label">Facebook · просмотры за 7 дней</span>
+              <strong id="reachValue">0</strong>
+              <small id="reachChange" class="neutral">0% к прошлой неделе</small>
+            </article>
+            <article class="stat-card">
+              <span class="label">Facebook · вовлечённость</span>
+              <strong id="engagementValue">0</strong>
+              <small id="engagementChange" class="neutral">0% к прошлой неделе</small>
+            </article>
+            <article class="stat-card">
+              <span class="label">Facebook · подписчики</span>
+              <strong id="ctrValue">0</strong>
+              <small id="ctrChange" class="neutral">нет данных за прошлую неделю</small>
+            </article>
+            <article class="stat-card">
+              <span class="label">YouTube · просмотры за 28 дней</span>
+              <strong id="followersValue">0</strong>
+              <small id="followersChange" class="neutral">Данные YouTube Analytics</small>
+            </article>
+          </div>
+
+          <div class="content-grid">
+            <div class="composer card">
+              <div class="card-header">
+                <h3>Опубликовать в Facebook</h3>
+                <span id="facebookConnection" class="chip light">Проверка Facebook…</span>
+              </div>
+
+              <form id="postForm" enctype="multipart/form-data">
+                <div class="tabs">
+                  <button type="button" class="tab active" data-type="text">Текст</button>
+                  <button type="button" class="tab" data-type="video">Видео</button>
+                </div>
+
+                <div class="ai-box">
+                  <div class="ai-heading">
+                    <label for="aiPrompt">ChatGPT-генератор поста</label>
+                    <span id="aiConnection" class="ai-connection">Проверка подключения…</span>
+                  </div>
+                  <textarea id="aiPrompt" rows="3" placeholder="Например: сопровождение клиента при открытии банковского счёта в Венгрии"></textarea>
+                  <label for="aiPostLanguage">Язык маркетингового поста</label>
+                  <select id="aiPostLanguage"><option value="ru">Русский</option><option value="uk">Українська</option><option value="en">English</option><option value="hu">Magyar</option><option value="vi">Tiếng Việt</option></select>
+                  <div class="ai-options">
+                    <label>Цель поста
+                      <select id="aiGoal">
+                        <option value="leads">Получить заявки</option><option value="trust">Укрепить доверие</option><option value="educate">Объяснить процедуру</option><option value="awareness">Рассказать об услуге</option>
+                      </select>
+                    </label>
+                    <label>Для кого
+                      <select id="aiAudience">
+                        <option value="newcomers">Недавно приехавшие</option><option value="residents">Жители Венгрии</option><option value="business">Предприниматели</option><option value="all">Вся аудитория</option>
+                      </select>
+                    </label>
+                    <label>Площадка
+                      <select id="aiPlatform">
+                        <option>Facebook</option><option>Instagram</option><option>Telegram</option><option>LinkedIn</option>
+                      </select>
+                    </label>
+                    <label>Тон
+                      <select id="aiTone">
+                        <option value="экспертный">Экспертный</option><option value="дружелюбный">Дружелюбный</option><option value="продающий">Продающий</option><option value="вдохновляющий">Вдохновляющий</option>
+                      </select>
+                    </label>
+                    <label>Длина
+                      <select id="aiLength">
+                        <option value="short">Короткий</option><option value="medium" selected>Средний</option><option value="long">Длинный</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="ai-actions">
+                    <button type="button" id="generateAiBtn" class="secondary-btn">Сгенерировать через ChatGPT</button>
+                  </div>
+                </div>
+
+                <div class="ai-box video-box">
+                  <label for="videoPrompt">AI-генератор видео</label>
+                  <textarea id="videoPrompt" rows="3" placeholder="Например: человек в офисе рассказывает про курс по маркетингу за рабочим столом"></textarea>
+                  <div class="ai-actions">
+                    <button type="button" id="generateVideoBtn" class="secondary-btn video-btn">Сгенерировать видео</button>
+                  </div>
+                </div>
+
+                <textarea id="postContent" name="content" placeholder="Напишите пост для страницы Facebook..." rows="6"></textarea>
+
+                <input id="generatedImagePath" type="hidden" name="generatedImagePath" />
+                <div id="generatedImagePreview" class="generated-image-preview" hidden>
+                  <img id="generatedImage" alt="Сгенерированная картинка для поста" />
+                  <div class="generated-image-actions">
+                    <span>Картинка будет опубликована вместе с постом</span>
+                    <button id="removeGeneratedImage" type="button">Убрать картинку</button>
+                  </div>
+                </div>
+
+                <div class="upload-box">
+                  <input id="videoInput" type="file" name="video" accept="video/*" />
+                  <label for="videoInput" class="upload-label">Загрузить видео</label>
+                  <span id="videoName">Файл не выбран</span>
+                </div>
+
+                <div class="composer-footer">
+                  <div class="meta">
+                    <span class="dot"></span>
+                    <span id="statusText">Проверяю подключение Facebook…</span>
+                  </div>
+                  <button type="submit" class="primary-btn large">Опубликовать</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card analytics-card">
+              <div class="card-header">
+                <h3>Динамика охвата</h3>
+                <span class="chip light">7 дней</span>
+              </div>
+
+              <div id="chart" class="chart" aria-label="reach chart"></div>
+            </div>
+          </div>
+
+          <div class="bottom-grid">
+            <div class="card recent-card">
+              <div class="card-header">
+                <h3>Последние публикации</h3>
+                <span class="chip light">Последние 5</span>
+              </div>
+
+              <div id="postsList" class="posts-list"></div>
+            </div>
+
+            <div class="card insights-card">
+              <div class="card-header">
+                <h3>Показатели</h3>
+              </div>
+
+              <ul class="insight-list">
+                <li>
+                  <span>Новые подписчики Facebook · 7 дней</span>
+                  <strong id="dashboardFbFollows">—</strong>
+                </li>
+                <li>
+                  <span>Время просмотра YouTube · 28 дней</span>
+                  <strong id="dashboardYtHours">—</strong>
+                </li>
+                <li>
+                  <span>Новые подписчики YouTube · 28 дней</span>
+                  <strong id="dashboardYtSubscribers">—</strong>
+                </li>
+                <li>
+                  <span>Среднее удержание YouTube</span>
+                  <strong id="dashboardYtRetention">—</strong>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="youtube-publish" class="section-panel">
+          <div class="youtube-hero"><div class="youtube-hero-copy"><div class="youtube-kicker"><span class="youtube-play">▶</span> YouTube</div><h2>Опубликовать видео</h2><p>Загрузите ролик и выберите, кто сможет его смотреть.</p></div><div class="youtube-hero-actions"><span id="ytUploadConnection" role="status">Проверяю канал…</span><a class="youtube-connect-btn" href="/api/youtube/connect">Подключить / обновить доступ</a></div></div>
+          <form id="youtubeUploadForm" class="card yt-upload-form">
+            <fieldset id="ytUploadFields">
+              <label class="settings-field"><span>Видео · до 200 МБ · MP4, MOV, AVI, WEBM, MPEG</span><input id="ytUploadFile" type="file" name="video" accept="video/mp4,video/quicktime,video/x-msvideo,video/webm,video/mpeg" required></label>
+              <video id="ytUploadPreview" controls hidden preload="metadata"></video>
+              <label class="settings-field"><span>Название</span><input name="title" maxlength="100" placeholder="Название видео" required></label>
+              <label class="settings-field"><span>Описание</span><textarea name="description" rows="5" maxlength="5000" placeholder="О чём это видео?"></textarea></label>
+              <div class="yt-upload-options"><label class="settings-field"><span>Видимость</span><select name="privacyStatus"><option value="private">Только я</option><option value="unlisted">Доступ по ссылке</option><option value="public">Для всех</option></select></label><label class="settings-field"><span>Это видео для детей?</span><select name="madeForKids" required><option value="">Выберите аудиторию</option><option value="false">Нет, не для детей</option><option value="true">Да, для детей</option></select></label></div>
+              <button id="ytUploadSubmit" class="primary-btn" type="submit" disabled>Загрузить в YouTube</button>
+            </fieldset>
+            <p id="ytUploadStatus" role="status" aria-live="polite"></p><a id="ytUploadedLink" hidden target="_blank" rel="noopener">Открыть видео на YouTube ↗</a>
+          </form>
+        </section>
+        <section id="telegram-support" class="section-panel">
+          <div class="youtube-hero"><div class="youtube-hero-copy"><div class="youtube-kicker">Telegram · WhatsApp · Facebook</div><h2>BEREG · Единая поддержка</h2><p>Клиенты пишут в удобном канале, а операторы отвечают из Telegram или рабочей панели.</p></div><span id="tgConnection" role="status">Проверка…</span></div>
+          <div class="tg-bot-grid">
+            <article class="tg-bot-card"><img src="/assets/telegram/client.png" alt="BEREG — поддержка"><div><span class="tg-bot-label">ДЛЯ КЛИЕНТОВ</span><h3>Помощь в Венгрии</h3><p>@bereg_support_bot</p><span id="tgClientMigration">Проверка подключения…</span><a href="https://t.me/bereg_support_bot" target="_blank" rel="noopener" class="primary-btn">Открыть бота ↗</a></div></article>
+            <article class="tg-bot-card"><img src="/assets/telegram/operator.png" alt="BEREG — команда"><div><span class="tg-bot-label">ДЛЯ КОМАНДЫ</span><h3>Команда поддержки</h3><p>@bereg_team_bot</p><span id="tgTeamMigration">Проверка подключения…</span><a href="https://t.me/bereg_team_bot" target="_blank" rel="noopener" class="primary-btn">Открыть бота ↗</a></div></article>
+          </div>
+          <div class="support-channel-grid">
+            <article class="support-channel-card whatsapp-channel">
+              <div class="support-channel-brand"><span class="support-channel-logo">WA</span><span>WHATSAPP · КЛИЕНТЫ</span></div>
+              <h3>BEREG в WhatsApp</h3><p>Быстрый чат по номеру +36 30 435 4603. Клиент сразу увидит приветствие и кнопки выбора услуги.</p>
+              <div class="support-menu-preview"><span>🗣 Перевод</span><span>📄 Документы</span><span>💬 Оператор</span></div>
+              <div class="support-channel-actions"><a class="primary-btn" href="https://wa.me/36304354603" target="_blank" rel="noopener">Написать в WhatsApp ↗</a><button class="ghost-btn" type="button" data-copy-link="https://wa.me/36304354603">Копировать ссылку</button></div>
+            </article>
+            <article class="support-channel-card facebook-channel">
+              <div class="support-channel-brand"><span class="support-channel-logo">f</span><span>FACEBOOK · КЛИЕНТЫ</span></div>
+              <h3>BEREG в Messenger</h3><p>Пока Meta проверяет доступ Messenger, страница направляет клиента к живому оператору в Telegram. После одобрения сообщения снова будут попадать в общую очередь автоматически.</p>
+              <div class="support-menu-preview"><span>Messenger → Telegram</span><span>💬 Живой оператор</span><span>🔗 Один переход</span></div>
+              <div class="support-channel-actions"><a class="primary-btn" href="https://m.me/1294857643710619" target="_blank" rel="noopener">Открыть Messenger ↗</a><a class="ghost-btn" href="https://t.me/bereg_support_bot?start=facebook" target="_blank" rel="noopener">Написать оператору ↗</a><button class="ghost-btn" type="button" data-copy-link="https://t.me/bereg_support_bot?start=facebook">Копировать ссылку поддержки</button></div>
+            </article>
+          </div>
+          <div class="card yt-upload-form" data-super-only><h3>Добавить оператора</h3><form id="tgOperatorForm"><label class="settings-field"><span>Имя оператора</span><input name="name" required maxlength="60" placeholder="Например, Анна"></label><button class="primary-btn" type="submit">Создать личный пароль</button></form><p id="tgOperatorResult" role="status"></p><button id="tgHidePassword" type="button" class="ghost-btn" hidden>Скрыть пароль</button></div>
+          <div class="card yt-upload-form"><div class="card-header"><h3>Операторы</h3><button id="tgRefresh" class="ghost-btn" type="button">Обновить</button></div><div id="tgOperators"></div><p>Вход в операторский бот: /login пароль. Ответ клиенту — через «Ответить» на его сообщение. /pause — пауза, /online — принимать клиентов, /clients — список, /close — закрыть обращение ответом на сообщение.</p><p>Telegram, Facebook Messenger и WhatsApp распределяются между операторами в одной очереди.</p></div>
+          <div class="card meta-connect-card" data-super-only>
+            <div class="card-header"><div><span class="growth-card-kicker">FACEBOOK + WHATSAPP</span><h3>Подключение общей переписки</h3></div><span id="metaInboxState" class="chip light">Проверка…</span></div>
+            <p>WhatsApp работает через официальный Cloud API и передаёт обращения в Telegram и панель. Для Facebook показан временный переход в Telegram до выдачи Meta разрешения <b>pages_messaging</b>.</p>
+            <div class="meta-connect-grid">
+              <div class="meta-webhook-box"><label>Callback URL<div><input id="metaWebhookUrl" readonly><button class="ghost-btn" type="button" data-copy-field="metaWebhookUrl">Копировать</button></div></label><label>Verify token<div><input id="metaVerifyToken" readonly><button class="ghost-btn" type="button" data-copy-field="metaVerifyToken">Копировать</button></div></label><small>В Meta Developers подпишите webhook на <b>messages</b> для Messenger и <b>messages</b> для WhatsApp.</small></div>
+              <form id="whatsappConnectForm" class="growth-form" autocomplete="off"><label>WhatsApp Phone Number ID<input name="phoneNumberId" inputmode="numeric" autocomplete="off" maxlength="40" placeholder="ID номера из Meta"></label><label>WhatsApp Business Account ID<input name="businessAccountId" inputmode="numeric" autocomplete="off" maxlength="40" placeholder="WABA ID"></label><label>Номер для отображения<input name="displayPhoneNumber" autocomplete="off" maxlength="40" placeholder="+36 ..."></label><label>Постоянный access token<input name="accessToken" type="password" autocomplete="new-password" placeholder="Оставьте пустым, чтобы не менять"></label><button class="primary-btn">Сохранить WhatsApp</button></form>
+            </div>
+            <div id="whatsappPublicLink" class="whatsapp-public-link" hidden><div class="whatsapp-public-icon">WA</div><div><small>ССЫЛКА ДЛЯ КЛИЕНТОВ</small><strong id="whatsappPublicNumber"></strong><span>Открывает чат с компанией прямо в WhatsApp</span></div><a id="whatsappPublicOpen" class="primary-btn" target="_blank" rel="noopener">Открыть чат ↗</a><button id="whatsappPublicCopy" class="ghost-btn" type="button">Копировать ссылку</button></div>
+            <div class="meta-connect-grid chatwoot-connect"><div class="meta-webhook-box"><span class="growth-card-kicker">FACEBOOK БЕЗ ПРОВЕРКИ КОМПАНИИ</span><h3>Мост через Chatwoot Cloud</h3><p>Chatwoot принимает Messenger через своё одобренное приложение. BEREG получает сообщения через защищённый webhook и отправляет ответы обратно через API.</p><label>Webhook BEREG<div><input id="chatwootWebhookUrl" readonly><button class="ghost-btn" type="button" data-copy-field="chatwootWebhookUrl">Копировать</button></div></label><a class="ghost-btn" href="https://app.chatwoot.com/app/login" target="_blank" rel="noopener">Открыть Chatwoot ↗</a></div><form id="chatwootConnectForm" class="growth-form" autocomplete="off"><label>Chatwoot Account ID<input name="accountId" inputmode="numeric" maxlength="30"></label><label>Facebook Inbox ID<input name="inboxId" inputmode="numeric" maxlength="30"></label><label>API access token<input name="apiToken" type="password" autocomplete="new-password" placeholder="Оставьте пустым, чтобы не менять"></label><label>Webhook secret<input name="webhookSecret" type="password" autocomplete="new-password" placeholder="Секрет подписи webhook"></label><button class="primary-btn">Сохранить мост Facebook</button><button id="checkChatwoot" class="ghost-btn" type="button">Проверить Chatwoot</button></form></div>
+            <div class="meta-connect-actions"><a class="ghost-btn" href="https://developers.facebook.com/apps/4248828915334162/whatsapp-business/wa-dev-console/" target="_blank" rel="noopener">Открыть WhatsApp в Meta ↗</a><button id="checkMetaChannels" class="ghost-btn" type="button">Проверить каналы</button><button id="repairFacebook" class="primary-btn" type="button">Подключить Messenger</button><button id="repairWhatsApp" class="primary-btn" type="button">Подключить webhook WhatsApp</button><button class="ghost-btn" type="button" data-meta-test="facebook">Тест Messenger</button><button class="ghost-btn" type="button" data-meta-test="whatsapp">Тест WhatsApp</button></div><p id="metaDiagnostics" role="status"></p><p id="chatwootStatus" role="status"></p><p id="metaInboxMessage" role="status"></p>
+          </div>
+        </section>
+        <section id="growth-center" class="section-panel">
+          <div class="growth-hero">
+            <div><span class="workspace-kicker">BEREG GROWTH</span><h2>Рост и продажи в одном месте</h2><p>Канал, TikTok, монетизация и обращения потенциальных клиентов.</p></div>
+            <div class="growth-stats"><span><b id="growthNewCount">0</b> новых</span><span><b id="growthHotCount">0</b> горячих</span><span><b id="growthTotalCount">0</b> всего</span></div>
+          </div>
+          <div class="growth-tabs" role="tablist">
+            <button class="active" type="button" data-growth-tab="leads">Поиск клиентов</button>
+            <button type="button" data-growth-tab="account" data-super-only>Telegram · мой аккаунт</button>
+            <button type="button" data-growth-tab="channel">Telegram-канал</button>
+            <button type="button" data-growth-tab="tiktok">TikTok Business</button>
+            <button type="button" data-growth-tab="money">Монетизация</button>
+          </div>
+          <div class="growth-pane" data-growth-pane="account" data-super-only>
+            <div class="growth-grid">
+              <article class="card growth-form-card">
+                <span class="growth-card-kicker">ЛИЧНЫЙ TELEGRAM</span><h3>Ответы от вашего аккаунта</h3>
+                <p id="accountBusiness"></p><p id="accountConnection" role="status">Загрузка подключения…</p>
+                <p>Панель отслеживает вопросы в выбранных группах и предлагает помощь BEREG со ссылкой на клиентского бота. Работает, пока запущен сервер панели.</p>
+                <details id="accountCredentials"><summary>Данные подключения Telegram</summary>
+                  <p>API ID и API Hash доступны в <a href="https://my.telegram.org/apps" target="_blank" rel="noopener">my.telegram.org → API development tools</a>.</p>
+                  <form id="accountCredentialsForm" class="growth-form" autocomplete="off"><label>API ID<input name="apiId" inputmode="numeric" required></label><label>API Hash<input name="apiHash" type="password" required autocomplete="new-password"></label><button class="ghost-btn">Сохранить подключение</button></form>
+                </details>
+                <form id="accountLoginForm" class="growth-form"><label>Номер вашего Telegram<input name="phone" type="tel" placeholder="+36…" required autocomplete="tel"></label><button class="primary-btn">Получить код входа</button></form>
+                <form id="accountVerifyForm" class="growth-form" hidden autocomplete="off"><label id="accountCodeLabel">Код из Telegram<input name="code" inputmode="numeric" autocomplete="one-time-code"></label><label id="accountPasswordLabel" hidden>Пароль двухэтапной проверки<input name="password" type="password" autocomplete="off"></label><button class="primary-btn">Подключить аккаунт</button></form>
+                <button id="accountDisconnect" class="ghost-btn" type="button" hidden>Отключить аккаунт</button>
+                <p id="accountActionStatus" role="status" aria-live="polite"></p>
+              </article>
+              <article class="card growth-form-card"><span class="growth-card-kicker">МОНИТОРИНГ</span><h3>Группы и автоматические ответы</h3>
+                <form id="accountSettingsForm" class="growth-form">
+                  <label class="growth-check"><input name="enabled" type="checkbox">Постоянно отслеживать вопросы</label>
+                  <label>Режим<select name="mode"><option value="preview">Черновики в панели</option><option value="auto">Отправлять от моего аккаунта</option></select></label>
+                  <div class="growth-form-row"><label>Пауза в группе, минут<input name="cooldownMinutes" type="number" min="1" max="10080" value="180" required></label><label>Ответов в группе за сутки<input name="dailyLimit" type="number" min="1" max="20" value="3" required></label></div>
+                  <label>Всего ответов за сутки<input name="globalDailyLimit" type="number" min="1" max="100" value="15" required></label>
+                  <button id="accountRefreshGroups" type="button" class="ghost-btn">Загрузить мои группы</button><div id="accountGroups">Подключите аккаунт, чтобы выбрать группы.</div>
+                  <small>Выбирайте группы, где разрешены такие ответы. Между отправками — минимум минута. Словарь тем находится во вкладке «Поиск клиентов».</small>
+                  <button class="primary-btn">Сохранить режим и группы</button>
+                </form>
+              </article>
+            </div>
+            <article class="card"><div class="card-header"><h3>Найденные вопросы и ответы</h3><button id="accountRefresh" type="button" class="ghost-btn">Обновить</button></div><p id="accountCheckStatus"></p><div id="accountJournal" class="growth-leads"></div></article>
+            <article class="card" style="margin-top:18px"><h3>Чаты Венгрии для подключения</h3><p>Подборка по публичным описаниям от 22.09.2026. Условия размещения нужно уточнить. После вступления группа появится в списке вашего аккаунта.</p><div id="accountCandidates" class="growth-leads"></div></article>
+          </div>
+          <div class="growth-pane active" data-growth-pane="leads">
+            <div class="growth-grid">
+              <article class="card growth-form-card"><span class="growth-card-kicker">НОВОЕ ОБРАЩЕНИЕ</span><h3>Проверить публикацию</h3><p>Вставьте текст найденного поста. Система оценит интерес и подготовит ответ.</p>
+                <form id="leadForm" class="growth-form"><div class="growth-form-row"><label>Площадка<select name="platform"><option>Facebook</option><option>Instagram</option><option>TikTok</option><option>YouTube</option><option>Telegram</option><option>Другое</option></select></label><label>Автор<input name="author" maxlength="100" placeholder="Имя или @username"></label></div><label>Ссылка<input name="url" type="url" maxlength="1000" placeholder="https://..."></label><label>Текст публикации<textarea name="text" rows="6" maxlength="10000" required placeholder="Например: Подскажите переводчика в Будапеште для визита к нотариусу..."></textarea></label><button class="primary-btn">Распознать и добавить</button></form><p id="leadFormStatus" role="status"></p>
+              </article>
+              <article class="card growth-keywords-card"><span class="growth-card-kicker">СЛОВАРЬ</span><h3>Что отслеживаем</h3><p>Поиск понимает фразы на русском, украинском и венгерском.</p><textarea id="growthKeywords" rows="12" placeholder="Одно ключевое слово в строке"></textarea><button id="saveGrowthKeywords" class="ghost-btn" type="button">Сохранить словарь</button><p id="growthKeywordsStatus" role="status"></p></article>
+            </div>
+            <div class="card growth-leads-card"><div class="card-header"><div><span class="growth-card-kicker">ЛЕНТА ВОЗМОЖНОСТЕЙ</span><h3>Найденные обращения</h3></div><button id="refreshGrowth" class="ghost-btn" type="button">Обновить</button></div><div id="growthLeads" class="growth-leads"></div></div>
+          </div>
+          <div class="growth-pane" data-growth-pane="channel">
+            <div class="growth-grid">
+              <article class="card growth-form-card"><span class="growth-card-kicker">ПУБЛИЧНЫЙ КАНАЛ</span><h3>Telegram BEREG</h3><form id="channelSettingsForm" class="growth-form"><label>Название<input name="name" maxlength="100"></label><label>Публичное имя<input name="username" maxlength="64" placeholder="bereg_hungary"></label><label>Описание<textarea name="description" rows="4" maxlength="255"></textarea></label><button class="primary-btn" data-super-only>Сохранить канал</button></form><p id="channelSettingsStatus" role="status"></p></article>
+              <article class="card growth-form-card"><span class="growth-card-kicker">ПУБЛИКАЦИЯ</span><h3>Новый пост</h3><p id="channelConnection">Проверка канала…</p><form id="channelPostForm" class="growth-form"><label>Текст поста<textarea name="text" rows="9" maxlength="4096" required placeholder="Полезная новость или ответ на частый вопрос..."></textarea></label><button class="primary-btn">Опубликовать в Telegram</button></form><p id="channelPostStatus" role="status"></p></article>
+            </div>
+          </div>
+          <div class="growth-pane" data-growth-pane="tiktok">
+            <div class="growth-grid">
+              <article class="card growth-form-card"><div class="tiktok-mark">♪</div><span class="growth-card-kicker">TIKTOK CONTENT POSTING</span><h3>Аккаунт и подключение</h3><p id="tiktokConnection">Проверка подключения…</p><p id="tiktokAccount"></p><button id="tiktokConnect" class="primary-btn" type="button" data-super-only>Подключить аккаунт TikTok</button><button id="tiktokDisconnect" class="ghost-btn" type="button" data-super-only hidden>Отключить аккаунт</button><p id="tiktokConnectionStatus" role="status"></p><details data-super-only><summary>Настройки приложения TikTok</summary><p>Создайте приложение на <a href="https://developers.tiktok.com/" target="_blank" rel="noopener">TikTok for Developers</a>, включите Login Kit и Content Posting API, затем добавьте этот callback URL в Login Kit.</p><form id="tiktokAppConfigForm" class="growth-form" autocomplete="off"><label>Client Key<input name="clientKey" required autocomplete="off"></label><label>Client Secret<input name="clientSecret" type="password" autocomplete="new-password" placeholder="Оставьте пустым, чтобы сохранить текущий"></label><button class="ghost-btn">Сохранить приложение</button></form><label>Callback URL<input id="tiktokRedirectUri" readonly></label></details></article>
+              <article class="card growth-form-card"><span class="growth-card-kicker">ПУБЛИКАЦИЯ ВИДЕО</span><h3>Новое видео TikTok</h3><form id="tiktokPublishForm" class="growth-form"><label>Видео MP4, MOV или WEBM · до 90 МБ<input name="video" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" required></label><label>Подпись<textarea name="title" rows="4" maxlength="2200" placeholder="Текст и хештеги"></textarea></label><label>Способ<select name="mode"><option value="direct">Опубликовать напрямую</option><option value="inbox">Загрузить в черновики TikTok</option></select></label><label id="tiktokPrivacyLabel">Кто увидит видео<select name="privacy"><option value="">Сначала подключите аккаунт</option></select></label><label class="growth-check"><input name="ownBusiness" type="checkbox" checked> Продвигается компания BEREG</label><label class="growth-check"><input name="disableComment" type="checkbox"> Запретить комментарии</label><label class="growth-check"><input name="disableDuet" type="checkbox"> Запретить Duet</label><label class="growth-check"><input name="disableStitch" type="checkbox"> Запретить Stitch</label><label class="growth-check"><input name="isAigc" type="checkbox"> Видео создано ИИ</label><label class="growth-check" id="tiktokConsentLabel"><input name="consent" type="checkbox" required> Я подтверждаю отправку этого видео в TikTok</label><button class="primary-btn" type="submit">Загрузить видео</button></form><small>Публикация выполняется через Content Posting API. До прохождения аудита TikTok может ограничивать видимость прямых публикаций приватным доступом.</small><p id="tiktokPublishStatus" role="status" aria-live="polite"></p><div id="tiktokJobs" class="monetization-list"></div></article>
+            </div>
+          </div>
+          <div class="growth-pane" data-growth-pane="money"><div class="card"><div class="card-header"><div><span class="growth-card-kicker">ДОХОД</span><h3>Монетизация площадок</h3></div><span class="chip info">Единый контроль</span></div><p>Отмечайте готовность каждой площадки и следующий шаг. Доступность программ зависит от страны, аудитории и решения платформы.</p><div id="monetizationList" class="monetization-list"></div></div></div>
+        </section>
+        <section id="content" class="section-panel">
+          <div class="workspace-intro"><span class="workspace-kicker">КОНТЕНТ</span><h2>План публикаций</h2><p>Сохраняйте идеи и готовьте материалы для социальных сетей. План виден всей команде.</p></div>
+          <div class="content-planner-layout">
+            <article class="card content-planner-editor"><h3 id="contentPlanFormTitle">Новая публикация</h3><form id="contentPlanForm" class="workspace-form"><input name="id" type="hidden"><label>Название<input name="title" maxlength="120" required placeholder="Например, полезный совет недели"></label><label>Площадка<select name="platform"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="telegram">Telegram</option><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select></label><label>Формат<select name="format"><option value="post">Пост</option><option value="story">История</option><option value="video">Видео</option><option value="short">Shorts</option><option value="reel">Reel</option></select></label><label>Дата и время<input name="scheduledAt" type="datetime-local"></label><label>Текст или заметка<textarea name="text" rows="5" maxlength="5000" placeholder="Черновик текста, идея, ссылки или заметки для команды"></textarea></label><div class="content-plan-actions"><button class="primary-btn" type="submit">Сохранить в план</button><button id="contentPlanCancel" class="ghost-btn" type="button" hidden>Отмена</button></div></form><p id="contentPlanStatus" role="status"></p></article>
+            <article class="card content-planner-list"><div class="card-header"><div><span class="growth-card-kicker">КОМАНДНЫЙ ПЛАН</span><h3>Материалы</h3></div><select id="contentPlanFilter" aria-label="Фильтр материалов"><option value="all">Все</option><option value="draft">Черновики</option><option value="planned">Запланированы</option><option value="published">Опубликованы</option></select></div><div id="contentPlanItems" class="content-plan-items"><div class="workspace-empty">Загрузка плана…</div></div></article>
+          </div>
+        </section>
+
+        <section id="calendar" class="section-panel">
+          <div class="workspace-intro"><span class="workspace-kicker">РАСПИСАНИЕ</span><h2>Календарь публикаций</h2><p>Запланированные материалы на ближайшие семь дней.</p></div>
+          <div class="card full-section"><div class="card-header"><h3>Ближайшая неделя</h3><button id="calendarRefresh" class="ghost-btn" type="button">Обновить</button></div><div id="publicationCalendar" class="calendar-grid"><div class="workspace-empty">Загрузка календаря…</div></div></div>
+        </section>
+
+        <section id="analytics" class="section-panel">
+          <div class="analytics-platform-header">
+            <div>
+              <p class="eyebrow">Каналы</p>
+              <h2>Аналитика платформ</h2>
+              <p>Выберите площадку, чтобы посмотреть её показатели отдельно.</p>
+            </div>
+            <div class="analytics-platform-switcher" role="tablist" aria-label="Выбор платформы">
+              <button class="platform-tab facebook active" type="button" data-platform="facebook" role="tab" aria-selected="true">
+                <span class="platform-icon facebook-icon">f</span>
+                <span><strong>Facebook</strong><small>Страница и публикации</small></span>
+              </button>
+              <button class="platform-tab youtube" type="button" data-platform="youtube" role="tab" aria-selected="false">
+                <span class="platform-icon youtube-icon">▶</span>
+                <span><strong>YouTube</strong><small>Канал и видео</small></span>
+              </button>
+            </div>
+          </div>
+
+          <div id="facebook-analytics" class="analytics-platform-panel active" role="tabpanel">
+          <div class="card full-section facebook-analytics-card">
+            <div class="card-header">
+              <div><span class="section-overline facebook-overline">Facebook Insights</span><h3>Аналитика страницы</h3></div>
+              <span id="fbAnalyticsStatus" class="chip light">Загрузка данных…</span>
+            </div>
+            <div class="analytics-metrics">
+              <div class="metric-box"><span>Просмотры страницы · 7 дней</span><strong id="fbAnalyticsReach">—</strong><small id="fbAnalyticsReachChange">Получаю данные Meta</small></div>
+              <div class="metric-box"><span>Вовлечённость · 7 дней</span><strong id="fbAnalyticsEngagement">—</strong><small id="fbAnalyticsEngagementChange">Получаю данные Meta</small></div>
+              <div class="metric-box"><span>Всего подписчиков</span><strong id="fbAnalyticsFollowers">—</strong><small id="fbAnalyticsFollowersChange">Получаю данные Meta</small></div>
+              <div class="metric-box"><span>Новые подписчики · 7 дней</span><strong id="fbAnalyticsFollows">—</strong><small>Реальные данные Facebook Insights</small></div>
+            </div>
+            <div class="facebook-live-note"><span class="facebook-live-dot"></span><span id="fbAnalyticsPage">Подключаю страницу Facebook…</span><strong>Обновляется при открытии панели</strong></div>
+          </div>
+          </div>
+
+        <div id="youtube-analytics" class="analytics-platform-panel youtube-section" role="tabpanel" hidden>
+          <div class="youtube-hero">
+            <div class="youtube-hero-copy">
+              <div class="youtube-kicker"><span class="youtube-play">▶</span> YouTube Studio</div>
+              <h2>Аналитика канала</h2>
+              <p>Главные показатели контента, аудитории и роста — в одном понятном обзоре.</p>
+            </div>
+            <div class="youtube-hero-actions">
+              <div class="youtube-connection-row">
+                <span id="youtubeConnection" class="youtube-connection">Проверяю подключение…</span>
+                <a id="youtubeConnectBtn" class="youtube-connect-btn" href="/api/youtube/connect">Подключить канал</a>
+              </div>
+              <div class="youtube-period" role="group" aria-label="Период аналитики">
+                <button type="button" data-period="7">7 дней</button>
+                <button type="button" class="active" data-period="28">28 дней</button>
+                <button type="button" data-period="90">90 дней</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="youtube-stats">
+            <article class="youtube-stat primary">
+              <span class="youtube-stat-icon">◉</span>
+              <div><span>Просмотры</span><strong id="ytViews">—</strong><small>Данные YouTube Analytics</small></div>
+            </article>
+            <article class="youtube-stat">
+              <span class="youtube-stat-icon">◷</span>
+              <div><span>Время просмотра</span><strong id="ytHours">—</strong><small>Суммарно за период</small></div>
+            </article>
+            <article class="youtube-stat">
+              <span class="youtube-stat-icon">＋</span>
+              <div><span>Новые подписчики</span><strong id="ytSubscribers">—</strong><small>Прирост за период</small></div>
+            </article>
+            <article class="youtube-stat">
+              <span class="youtube-stat-icon">₽</span>
+              <div><span>Доход</span><strong id="ytRevenue">—</strong><small>Если канал монетизируется</small></div>
+            </article>
+          </div>
+
+          <div class="youtube-main-grid">
+            <article class="card youtube-performance">
+              <div class="card-header youtube-card-header">
+                <div><span class="section-overline">Динамика канала</span><h3>Просмотры за 28 дней</h3></div>
+                <div class="youtube-total"><span>Всего</span><strong id="ytChartTotal">—</strong></div>
+              </div>
+              <div class="youtube-line-chart" aria-label="График просмотров YouTube">
+                <div class="youtube-grid-lines"><span>8K</span><span>6K</span><span>4K</span><span>2K</span></div>
+                <svg viewBox="0 0 720 230" preserveAspectRatio="none" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="youtubeArea" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#ff3b30" stop-opacity=".32"/>
+                      <stop offset="100%" stop-color="#ff3b30" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <path id="ytChartArea" class="youtube-area" d=""/>
+                  <path id="ytChartLine" class="youtube-line" d=""/>
+                  <circle id="ytChartPoint" cx="0" cy="0" r="6" class="youtube-point"/>
+                </svg>
+                <div id="ytChartDates" class="youtube-chart-dates"><span>Подключите канал для загрузки данных</span></div>
+              </div>
+            </article>
+
+            <article class="card youtube-audience-card">
+              <div class="card-header youtube-card-header"><div><span class="section-overline">Аудитория</span><h3>Удержание</h3></div><span id="ytRetentionScore" class="youtube-score">Загрузка</span></div>
+              <div id="ytRetentionRing" class="retention-ring"><div><strong id="ytRetention">—</strong><span>в среднем</span></div></div>
+              <div class="retention-details">
+                <div><span>Средний просмотр</span><strong id="ytAverageDuration">—</strong></div>
+                <div><span>Подписчиков на канале</span><strong id="ytChannelSubscribers">—</strong></div>
+              </div>
+            </article>
+          </div>
+
+          <article class="card youtube-videos-card">
+            <div class="card-header youtube-card-header"><div><span class="section-overline">Лучший контент</span><h3>Видео, которые растут быстрее всего</h3></div><button class="youtube-link-btn" type="button">Все видео →</button></div>
+            <div id="youtubeVideoList" class="youtube-video-list">
+              <div class="youtube-empty">Загружаю реальные данные YouTube…</div>
+            </div>
+          </article>
+        </div>
+        </section>
+
+        <section id="advisor" class="section-panel">
+          <div class="advisor-hero">
+            <div class="advisor-hero-copy">
+              <span class="advisor-kicker">✦ AI на основе вашей статистики</span>
+              <h2>Как привлечь больше клиентов</h2>
+              <p>Советник анализирует реальные показатели Facebook и YouTube и предлагает конкретные действия для продвижения услуг.</p>
+            </div>
+            <button id="generateAdviceBtn" class="primary-btn advisor-generate-btn" type="button">Сформировать рекомендации</button>
+          </div>
+
+          <div class="advisor-grid">
+            <article class="card advisor-data-card">
+              <div class="settings-card-title"><span class="settings-icon">◫</span><div><h3>Данные для анализа</h3><p>Свежие значения из подключённых API.</p></div></div>
+              <div class="advisor-data-list">
+                <div><span>Facebook · просмотры</span><strong id="advisorFbViews">—</strong></div>
+                <div><span>Facebook · вовлечённость</span><strong id="advisorFbEngagement">—</strong></div>
+                <div><span>YouTube · просмотры</span><strong id="advisorYtViews">—</strong></div>
+                <div><span>YouTube · удержание</span><strong id="advisorYtRetention">—</strong></div>
+              </div>
+              <small id="advisorDataStatus" class="advisor-source">Нажмите кнопку, чтобы получить свежий анализ.</small>
+            </article>
+
+            <article class="card advisor-result-card">
+              <div class="settings-card-title"><span class="settings-icon advisor-spark">✦</span><div><h3>Рекомендации AI</h3><p>Приоритетные шаги для роста обращений.</p></div></div>
+              <div id="advisorResult" class="advisor-result-empty">
+                <strong>Готов к анализу</strong>
+                <p>AI не будет придумывать статистику — рекомендации строятся только на данных ваших каналов.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="settings" class="section-panel">
+          <form id="settingsForm" class="settings-workspace">
+            <div class="settings-heading">
+              <div class="settings-intro"><span class="settings-intro-icon">⚙</span><div><strong>Центр управления</strong><p>Подключения, значения по умолчанию и поведение панели.</p></div></div>
+              <div class="settings-save-area"><span id="settingsSaveStatus">Изменения ещё не сохранены</span><button class="primary-btn settings-save-btn" type="submit">Сохранить</button></div>
+            </div>
+
+            <div class="settings-grid">
+              <div class="card settings-card connections-settings">
+                <div class="settings-card-title"><span class="settings-icon">↗</span><div><h3>Подключённые каналы</h3><p>Состояние аккаунтов и API в реальном времени.</p></div></div>
+                <div class="connections-list">
+                  <div class="connection-setting-row">
+                    <span class="platform-icon facebook-icon">f</span><div><strong>Facebook</strong><span id="settingsFacebookStatus">Проверяю подключение…</span></div><span id="settingsFacebookBadge" class="chip light">Проверка</span>
+                  </div>
+                  <div class="facebook-oauth-settings" data-super-only>
+                    <div class="facebook-oauth-copy"><strong>Автоматический доступ Facebook</strong><span>Один раз укажите данные Meta-приложения, затем войдите через Facebook. Панель сама сохранит долгоживущий токен страницы и будет обновлять его.</span></div>
+                    <div class="facebook-oauth-fields">
+                      <label class="settings-field"><span>Meta App ID</span><input id="facebookAppId" inputmode="numeric" autocomplete="off" placeholder="ID приложения"></label>
+                      <label class="settings-field"><span>Meta App Secret</span><input id="facebookAppSecret" type="password" autocomplete="new-password" placeholder="Введите секрет один раз"></label>
+                    </div>
+                    <label class="settings-field"><span>OAuth Redirect URI · добавьте его в настройках Meta-приложения</span><input id="facebookRedirectUri" readonly></label>
+                    <div class="facebook-oauth-actions"><button id="saveFacebookApp" class="settings-secondary-btn" type="button">Сохранить данные приложения</button><a id="connectFacebookBtn" class="primary-btn" href="/api/facebook/connect">Подключить через Facebook ↗</a></div>
+                    <p id="facebookOauthStatus" role="status"></p>
+                  </div>
+                  <div class="connection-setting-row">
+                    <span class="platform-icon youtube-icon">▶</span><div><strong>YouTube</strong><span id="settingsYoutubeStatus">Проверяю подключение…</span></div><span id="settingsYoutubeBadge" class="chip light">Проверка</span>
+                  </div>
+                </div>
+                <button id="refreshConnectionsBtn" class="settings-secondary-btn" type="button"><span>↻</span> Обновить состояния</button>
+              </div>
+
+              <div class="card settings-card">
+                <div class="settings-card-title"><span class="settings-icon">✦</span><div><h3>Контент по умолчанию</h3><p>Используется в генераторе новых публикаций.</p></div></div>
+                <label class="settings-field"><span>Название бизнеса</span><input id="settingBusinessName" name="businessName" type="text" maxlength="100" required></label>
+                <label class="settings-field"><span>Основная площадка</span><select id="settingDefaultPlatform" name="defaultPlatform"><option>Facebook</option><option>Instagram</option><option>Telegram</option><option>LinkedIn</option></select></label>
+              </div>
+
+              <div class="card settings-card">
+                <div class="settings-card-title"><span class="settings-icon">◫</span><div><h3>Аналитика</h3><p>Частота и период отображения показателей.</p></div></div>
+                <label class="settings-field"><span>Период YouTube по умолчанию</span><select id="settingYoutubePeriod" name="youtubePeriod"><option value="7">7 дней</option><option value="28">28 дней</option><option value="90">90 дней</option></select></label>
+                <label class="settings-field"><span>Обновлять каждые, минут</span><input id="settingRefreshMinutes" name="refreshMinutes" type="number" min="1" max="60"></label>
+                <label class="settings-toggle"><span><strong>Автообновление</strong><small>Получать свежие данные без перезагрузки страницы</small></span><input id="settingAutoRefresh" name="autoRefresh" type="checkbox"><i></i></label>
+              </div>
+
+              <div class="card settings-card">
+                <div class="settings-card-title"><span class="settings-icon">⚙</span><div><h3>Интерфейс</h3><p>Персональные настройки отображения панели.</p></div></div>
+                <label class="settings-toggle"><span><strong>Уведомления в панели</strong><small>Показывать статусы публикаций и подключений</small></span><input id="settingNotifications" name="notifications" type="checkbox"><i></i></label>
+                <label class="settings-toggle"><span><strong>Компактный режим</strong><small>Уменьшить отступы и показать больше данных</small></span><input id="settingCompactMode" name="compactMode" type="checkbox"><i></i></label>
+              </div>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="tgPasswordDialog" class="tg-password-dialog">
+      <div class="tg-password-heading"><div><span>ДОСТУП ОПЕРАТОРА</span><h3 id="tgPasswordOperatorName">Пароль оператора</h3></div><button id="tgPasswordClose" class="tg-dialog-close" type="button" aria-label="Закрыть">×</button></div>
+      <div class="tg-current-password"><span>Текущий пароль</span><code id="tgCurrentPassword">Загрузка…</code><button id="tgCopyPassword" class="ghost-btn" type="button">Копировать</button></div>
+      <form id="tgPasswordForm">
+        <input id="tgPasswordOperatorId" type="hidden">
+        <label class="settings-field"><span>Новый пароль · от 10 символов</span><input id="tgNewPassword" type="text" minlength="10" maxlength="100" autocomplete="new-password" required placeholder="Введите или создайте надёжный пароль"></label>
+        <div class="tg-password-actions"><button id="tgGeneratePassword" class="ghost-btn" type="button">Сгенерировать</button><button class="primary-btn" type="submit">Сохранить новый пароль</button></div>
+      </form>
+      <p id="tgPasswordStatus" role="status" aria-live="polite"></p>
+      <small>После смены оператор выйдет из бота и должен снова отправить команду <b>/login новый_пароль</b>.</small>
+    </dialog>
+
+    <script src="/audit-client.js?v=2"></script>
+    <script src="/crm-extra-translations.js?v=1"></script>
+    <script src="/crm-i18n.js?v=6"></script>
+    <script src="/workspace.js?v=37"></script>
+    <script src="/feature-loader.js?v=9"></script>
+    <script>
+      setTimeout(() => {
+        if (!document.body.classList.contains('feature-loading')) return;
+        document.body.classList.remove('auth-loading', 'feature-loading');
+        const message = document.createElement('div');
+        message.className = 'workspace-load-error';
+        message.setAttribute('role', 'alert');
+        message.textContent = 'The workspace is taking too long to start. Check your connection and reload the page.';
+        document.querySelector('.main-panel')?.prepend(message);
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.textContent = 'Reload dashboard';
+        retry.style.cssText = 'margin-left:12px;border:1px solid #806b45;border-radius:8px;padding:7px 10px;background:#20211f;color:#ead7aa;cursor:pointer';
+        retry.onclick = () => location.reload();
+        message.appendChild(retry);
+      }, 15000);
+    </script>
+  <script src="/crm-tests.js" defer></script></body>
+</html>

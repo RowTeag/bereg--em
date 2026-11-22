@@ -1,0 +1,9 @@
+{
+  "mode": "preview",
+  "botUrl": "https://t.me/REPLACE_BOT",
+  "company": "НАЗВАНИЕ КОМПАНИИ",
+  "allowedChatIds": [],
+  "cooldownMinutes": 180,
+  "dailyLimitPerChat": 3,
+  "topics": []
+}

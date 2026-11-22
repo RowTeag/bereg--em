@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>BEREG · Sign in</title>
+    <link rel="stylesheet" href="/login.css?v=8">
+  </head>
+  <body>
+    <main class="login-layout">
+      <section class="login-story">
+        <div class="wordmark">BEREG <span>OUTSOURCE GROUP</span></div>
+        <div class="story-copy">
+          <span class="overline" data-i18n="workspace">WORKSPACE</span>
+          <h1 data-i18n="headline">Everything your team needs.</h1>
+          <p data-i18n="description">Content, customers and communication.<br>All in one place, with access based on your role.</p>
+          <div class="story-points" aria-label="Workspace features">
+            <span class="story-point" data-i18n="pointTeam">Team and access</span>
+            <span class="story-point" data-i18n="pointInventory">Staff and inventory</span>
+            <span class="story-point" data-i18n="pointChannels">Connected channels</span>
+          </div>
+        </div>
+        <footer data-i18n="footer">Budapest · BEREG Outsource Group</footer>
+      </section>
+      <section class="login-form-wrap">
+        <form id="loginForm">
+          <div class="login-controls">
+            <label class="language-control" for="loginLanguage">
+              <svg class="language-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3.5 12h17M12 3c2.3 2.5 3.4 5.5 3.4 9s-1.1 6.5-3.4 9c-2.3-2.5-3.4-5.5-3.4-9S9.7 5.5 12 3Z"></path></svg>
+              <span class="language-label" data-i18n="language">Language</span>
+              <select id="loginLanguage" aria-label="Language">
+              <option value="en">English</option>
+              <option value="ru">Русский</option>
+              <option value="vi">Tiếng Việt</option>
+              </select>
+              <svg class="language-chevron" viewBox="0 0 12 8" aria-hidden="true"><path d="m1 1 5 5 5-5"></path></svg>
+            </label>
+          </div>
+          <img src="/assets/telegram/client.png" alt="BEREG">
+          <span class="overline" data-i18n="welcome">WELCOME BACK</span>
+          <h2 data-i18n="signIn">Sign in to your workspace</h2>
+          <p data-i18n="instruction">Use your personal username and password.</p>
+          <label><span data-i18n="username">Username</span><input name="username" autocomplete="username" required autofocus placeholder="Your username" data-i18n-placeholder="usernamePlaceholder"></label>
+          <label><span data-i18n="password">Password</span><span class="password-wrap"><input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Your password" data-i18n-placeholder="passwordPlaceholder"><button type="button" id="showPassword" aria-label="Show password" data-i18n="show">Show</button></span></label>
+          <label class="remember-label"><input id="remember" name="remember" type="checkbox" checked><span data-i18n="remember">Remember this device for 30 days</span></label>
+          <button class="submit" type="submit" data-i18n="submit">Sign in →</button>
+          <p id="loginError" role="alert"></p>
+          <small data-i18n="help">Need access? Contact the panel owner.<br>Your panel password may differ from your Telegram bot password.</small>
+        </form>
+      </section>
+    </main>
+    <script src="/login.js?v=7"></script>
+  </body>
+</html>

@@ -1,0 +1,3 @@
+button.crm-test-button{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:26px;padding:2px 8px;margin:2px 5px;border:1px solid currentColor;border-radius:5px;background:transparent;color:inherit;font:500 12px/1.25 system-ui;cursor:pointer;vertical-align:middle}
+button.crm-test-button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.crm-test-result:not([hidden]){display:block;padding:6px 10px;font-size:13px;line-height:1.45}

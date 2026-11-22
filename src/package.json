@@ -1,0 +1,32 @@
+{
+  "name": "smm-panel",
+  "version": "1.0.0",
+  "description": "Modern SMM panel for publishing posts and videos to Facebook pages",
+  "main": "server.js",
+  "scripts": {
+    "start": "sh scripts/railway-start.sh",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "smm",
+    "facebook",
+    "social-media",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "ical.js": "^2.2.1",
+    "multer": "^1.4.5-lts.2",
+    "sharp": "^0.35.4",
+    "teleproto": "^1.229.0",
+    "three": "^0.185.1"
+  },
+  "browser": {
+    "sharp": "./cloudflare/sharp-unavailable.js",
+    "teleproto": "./cloudflare/teleproto-unavailable.js"
+  }
+}

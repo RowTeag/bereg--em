@@ -1,0 +1,40 @@
+'use strict';
+
+const languages = {
+  en: { name: 'English', label: '🇬🇧 English' },
+  ru: { name: 'Russian', label: '🇷🇺 Русский' },
+  uk: { name: 'Ukrainian', label: '🇺🇦 Українська' },
+  hu: { name: 'Hungarian', label: '🇭🇺 Magyar' },
+  vi: { name: 'Vietnamese', label: '🇻🇳 Tiếng Việt' },
+  de: { name: 'German', label: '🇩🇪 Deutsch' },
+  es: { name: 'Spanish', label: '🇪🇸 Español' },
+  fr: { name: 'French', label: '🇫🇷 Français' },
+  it: { name: 'Italian', label: '🇮🇹 Italiano' },
+  pl: { name: 'Polish', label: '🇵🇱 Polski' },
+  ro: { name: 'Romanian', label: '🇷🇴 Română' },
+  tr: { name: 'Turkish', label: '🇹🇷 Türkçe' },
+  ar: { name: 'Arabic', label: '🇸🇦 العربية' },
+  zh: { name: 'Chinese', label: '🇨🇳 中文' },
+  ja: { name: 'Japanese', label: '🇯🇵 日本語' },
+  ko: { name: 'Korean', label: '🇰🇷 한국어' },
+  pt: { name: 'Portuguese', label: '🇵🇹 Português' },
+  nl: { name: 'Dutch', label: '🇳🇱 Nederlands' },
+  cs: { name: 'Czech', label: '🇨🇿 Čeština' },
+  sk: { name: 'Slovak', label: '🇸🇰 Slovenčina' },
+  bg: { name: 'Bulgarian', label: '🇧🇬 Български' },
+  el: { name: 'Greek', label: '🇬🇷 Ελληνικά' },
+  sr: { name: 'Serbian', label: '🇷🇸 Српски' },
+  hr: { name: 'Croatian', label: '🇭🇷 Hrvatski' },
+  da: { name: 'Danish', label: '🇩🇰 Dansk' },
+  fi: { name: 'Finnish', label: '🇫🇮 Suomi' },
+  sv: { name: 'Swedish', label: '🇸🇪 Svenska' },
+  no: { name: 'Norwegian', label: '🇳🇴 Norsk' },
+  hi: { name: 'Hindi', label: '🇮🇳 हिन्दी' },
+  id: { name: 'Indonesian', label: '🇮🇩 Bahasa Indonesia' },
+  th: { name: 'Thai', label: '🇹🇭 ไทย' },
+  fa: { name: 'Persian', label: '🇮🇷 فارسی' },
+  he: { name: 'Hebrew', label: '🇮🇱 עברית' },
+  ca: { name: 'Catalan', label: 'Català' }
+};
+
+module.exports = { languages, languageCodes: Object.keys(languages) };
