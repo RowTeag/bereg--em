@@ -12,7 +12,51 @@
     <link rel="stylesheet" href="/business.css?v=1" />
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
-  <link rel="stylesheet" href="/crm-tests.css"></head>
+  <link rel="stylesheet" href="/crm-tests.css">
+<style>
+.crm-tools {
+  margin: 16px 0 24px;
+  border: 1px solid #385043;
+  border-radius: 18px;
+  background: #14251c;
+  color: #eff6ec;
+  overflow: hidden;
+}
+.crm-tools details + details { border-top: 1px solid #304438; }
+.crm-tools summary {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 56px;
+  padding: 9px 18px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  list-style: none;
+  cursor: pointer;
+}
+.crm-tools summary::-webkit-details-marker { display: none; }
+.crm-tools .tool-icon { width: 32px; height: 32px; padding: 7px; box-sizing: border-box; border-radius: 9px; background: #253e2e; color: #b6deb4; flex: none; }
+.crm-tools summary::after { content: ""; flex: none; width: 7px; height: 7px; border: solid #b1c7b3; border-width: 0 1.5px 1.5px 0; margin: 0 3px 3px auto; transform: rotate(45deg); }
+.crm-tools details[open] > summary { background: #1e3326; }
+.crm-tools details[open] > summary::after { transform: rotate(225deg); margin-bottom: -4px; }
+.crm-tools summary:focus-visible { outline: 2px solid #b3d6a9; outline-offset: -3px; }
+.crm-tools .tool-body { padding: 16px 18px; display: grid; gap: 12px; }
+.crm-tools form { display: grid; gap: 12px; }
+.crm-tools label { display: grid; gap: 5px; min-width: 0; color: #bed1c1; font-size: 14px; }
+.crm-tools :is(input,select,textarea) { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; background: #101e16; color: #eff6ec; border: 1px solid #49604f; border-radius: 8px; padding: 9px; font: inherit; }
+.crm-tools textarea { min-height: 78px; resize: vertical; }
+.crm-tools button { justify-self: start; }
+.crm-tools form > button { padding: 10px 16px; border-radius: 9px; background: #b0d6a8; color: #14251c; font-weight: 650; }
+.crm-tools .tool-body :is(p,div):empty { display: none; }
+.crm-tools .tool-body p { margin: 0; }
+@media (min-width: 650px) {
+  .crm-tools #clientFilters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+</style>
+</head>
   <body class="auth-loading feature-loading">
     <div class="app-shell">
       <aside class="sidebar">
@@ -71,17 +115,7 @@
       </aside>
 
       <main class="main-panel">
-        <details id="reservioCalendar"><summary>Записи Reservio</summary>
-<form id="reservioImport"><label>Календарь Reservio (.ics) <input type="file" accept=".ics,text/calendar" required></label><button>Импортировать записи</button></form><p id="reservioStatus" role="status"></p><div id="reservioBookings"></div></details>
-<details id="caseReport"><summary>Отчёт по оплатам за период</summary><button type="button" class="crm-test-button" data-crm-test="payments" aria-label="Тест: пример отчёта" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span>
-<label>С <input type="date" id="reportFrom"></label><label>По <input type="date" id="reportTo"></label><div id="caseTotals"></div></details><details><summary>Фильтры клиентов</summary><form id="clientFilters">
-<label>Услуга <input name="service"></label><label>Страна <input name="country"></label>
-<label>Статус дела <input name="caseStatus"></label><label>Язык <select name="language"><option value="">Все</option><option value="uk">Українська</option><option value="hu">Magyar</option><option value="ru">Русский</option><option value="en">English</option></select></label>
-<label>Активный заказ <select name="activeOrder"><option value="">Все</option><option value="yes">Да</option><option value="no">Нет</option></select></label>
-<label>Обращение с <input name="from" type="date"></label><label>По <input name="to" type="date"></label>
-<label>История <select name="history"><option value="">Все</option><option value="paid">Ранее платили</option><option value="unpaid">Без записанных оплат</option></select></label>
-<button type="reset">Сбросить</button></form></details><details><summary>Рассылка выбранной группе</summary><form id="campaignForm"><label>Сообщение подписчикам Telegram <textarea name="message" maxlength="3200" required></textarea></label>
-<p>Получатели выбираются фильтрами списка. Для подписки клиент отправляет боту /subscribe, для отмены — /unsubscribe.</p><button>Отправить подписчикам</button></form><p id="campaignStatus" role="status"></p></details><div id="expiryWarnings" role="status"></div><div id="crmNewClientNotice" class="crm-notice" role="status" aria-live="polite" hidden></div>
+        <div id="expiryWarnings" role="status"></div><div id="crmNewClientNotice" class="crm-notice" role="status" aria-live="polite" hidden></div>
         <header class="topbar">
           <div>
             <p class="eyebrow">BEREG OUTSOURCE GROUP / WORKSPACE</p>
@@ -93,6 +127,19 @@
             <button id="newPostBtn" class="primary-btn" type="button">+ Новый пост</button>
           </div>
         </header>
+        <div class="crm-tools">
+<details id="reservioCalendar"><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3"/></svg><span>Записи Reservio</span></summary><div class="tool-body">
+<form id="reservioImport"><label>Календарь Reservio (.ics) <input type="file" accept=".ics,text/calendar" required></label><button>Импортировать записи</button></form><p id="reservioStatus" role="status"></p><div id="reservioBookings"></div></div></details>
+<details id="caseReport"><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h17M8 16v-4m5 4V7m5 9v-6"/></svg><span>Отчёт по оплатам за период</span></summary><div class="tool-body"><button type="button" class="crm-test-button" data-crm-test="payments" aria-label="Тест: пример отчёта" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span>
+<label>С <input type="date" id="reportFrom"></label><label>По <input type="date" id="reportTo"></label><div id="caseTotals"></div></div></details><details><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6m4 0h8M3 17h10m4 0h4"/><circle cx="11" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg><span>Фильтры клиентов</span></summary><div class="tool-body"><form id="clientFilters">
+<label>Услуга <input name="service"></label><label>Страна <input name="country"></label>
+<label>Статус дела <input name="caseStatus"></label><label>Язык <select name="language"><option value="">Все</option><option value="uk">Українська</option><option value="hu">Magyar</option><option value="ru">Русский</option><option value="en">English</option></select></label>
+<label>Активный заказ <select name="activeOrder"><option value="">Все</option><option value="yes">Да</option><option value="no">Нет</option></select></label>
+<label>Обращение с <input name="from" type="date"></label><label>По <input name="to" type="date"></label>
+<label>История <select name="history"><option value="">Все</option><option value="paid">Ранее платили</option><option value="unpaid">Без записанных оплат</option></select></label>
+<button type="reset">Сбросить</button></form></div></details><details><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 18-7-6 18-4-7-8-4Zm8 4L21 3"/></svg><span>Рассылка выбранной группе</span></summary><div class="tool-body"><form id="campaignForm"><label>Сообщение подписчикам Telegram <textarea name="message" maxlength="3200" required></textarea></label>
+<p>Получатели выбираются фильтрами списка. Для подписки клиент отправляет боту /subscribe, для отмены — /unsubscribe.</p><button>Отправить подписчикам</button></form><p id="campaignStatus" role="status"></p></div></details>
+        </div>
 
         <section id="team-access" class="section-panel" data-super-only>
           <div class="workspace-intro"><span class="workspace-kicker">КОМАНДА</span><h2>Каждому — свой доступ.</h2><p>Создавайте личные аккаунты и управляйте доступом сотрудников. Владелец видит все разделы и обращения.</p></div>
