@@ -303,7 +303,7 @@ body:has(.login-layout) {
 
 
 /* Inbox conversation and tools */
-#inboxBack { display: none; }
+#inboxBack, #inboxStatus:empty { display: none; }
 
 #inbox .inbox-dialog {
   min-width: 0;
@@ -420,7 +420,7 @@ body:has(.login-layout) {
 }
 
 @media (max-width: 760px) {
-  #inbox:not(.inbox-chat-open) :is(#inboxConversation, #inboxBack),
+  #inbox:not(.inbox-chat-open) .inbox-dialog,
   #inbox.inbox-chat-open :is(.inbox-toolbar, #inboxList, .workspace-intro) {
     display: none;
   }
