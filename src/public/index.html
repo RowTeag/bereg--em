@@ -12,8 +12,7 @@
     <link rel="stylesheet" href="/business.css?v=1" />
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
-  <link rel="stylesheet" href="/crm-tests.css">
-<style>
+  <link rel="stylesheet" href="/crm-tests.css"><style>
 .crm-tools {
   margin: 16px 0 24px;
   border: 1px solid #385043;
@@ -128,16 +127,27 @@
           </div>
         </header>
         <div class="crm-tools">
-<details id="reservioCalendar"><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3"/></svg><span>Записи Reservio</span></summary><div class="tool-body">
-<form id="reservioImport"><label>Календарь Reservio (.ics) <input type="file" accept=".ics,text/calendar" required></label><button>Импортировать записи</button></form><p id="reservioStatus" role="status"></p><div id="reservioBookings"></div></div></details>
-<details id="caseReport"><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h17M8 16v-4m5 4V7m5 9v-6"/></svg><span>Отчёт по оплатам за период</span></summary><div class="tool-body"><button type="button" class="crm-test-button" data-crm-test="payments" aria-label="Тест: пример отчёта" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span>
-<label>С <input type="date" id="reportFrom"></label><label>По <input type="date" id="reportTo"></label><div id="caseTotals"></div></div></details><details><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6m4 0h8M3 17h10m4 0h4"/><circle cx="11" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg><span>Фильтры клиентов</span></summary><div class="tool-body"><form id="clientFilters">
+<details id="reservioCalendar" data-admin-only><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3"/></svg><span>Записи Reservio</span></summary><div class="tool-body">
+          <p>Загрузите календарь ICS или выгрузку записей CSV из статистики Reservio. Если отчёт скачался в Excel, сохраните его как CSV UTF-8.</p>
+          <form id="reservioImport">
+            <label>Файл Reservio (.ics, .csv) <input name="file" type="file" accept=".ics,.csv,text/calendar,text/csv" required></label>
+            <button type="submit">Импортировать записи</button>
+          </form>
+          <form id="reservioLinkImport" data-super-only data-no-audit>
+            <label>Ссылка на календарь Reservio <input name="url" type="text" inputmode="url" autocomplete="off" maxlength="2048" required placeholder="https:// или webcal://"></label>
+            <button type="submit">Импортировать по ссылке</button>
+          </form>
+          <p id="reservioStatus" role="status"></p><div id="reservioBookings"></div>
+        </div></details>
+<details id="caseReport" data-admin-only><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h17M8 16v-4m5 4V7m5 9v-6"/></svg><span>Отчёт по оплатам за период</span></summary><div class="tool-body"><button type="button" class="crm-test-button" data-crm-test="payments" aria-label="Тест: пример отчёта" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span>
+<label>С <input type="date" id="reportFrom"></label><label>По <input type="date" id="reportTo"></label><div id="caseTotals"></div></div></details><details data-admin-only><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6m4 0h8M3 17h10m4 0h4"/><circle cx="11" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg><span>Фильтры клиентов</span></summary><div class="tool-body">
+<p>Заполните поля в разделе «Клиенты» → карточка клиента. Прикрепите файлы в той же карточке. Фильтры ищут по полям карточки и записанным оплатам.</p><form id="clientFilters">
 <label>Услуга <input name="service"></label><label>Страна <input name="country"></label>
 <label>Статус дела <input name="caseStatus"></label><label>Язык <select name="language"><option value="">Все</option><option value="uk">Українська</option><option value="hu">Magyar</option><option value="ru">Русский</option><option value="en">English</option></select></label>
 <label>Активный заказ <select name="activeOrder"><option value="">Все</option><option value="yes">Да</option><option value="no">Нет</option></select></label>
 <label>Обращение с <input name="from" type="date"></label><label>По <input name="to" type="date"></label>
 <label>История <select name="history"><option value="">Все</option><option value="paid">Ранее платили</option><option value="unpaid">Без записанных оплат</option></select></label>
-<button type="reset">Сбросить</button></form></div></details><details><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 18-7-6 18-4-7-8-4Zm8 4L21 3"/></svg><span>Рассылка выбранной группе</span></summary><div class="tool-body"><form id="campaignForm"><label>Сообщение подписчикам Telegram <textarea name="message" maxlength="3200" required></textarea></label>
+<button type="reset">Сбросить</button> <button type="button" id="showFilteredClients">Показать клиентов</button></form></div></details><details data-admin-only><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 18-7-6 18-4-7-8-4Zm8 4L21 3"/></svg><span>Рассылка выбранной группе</span></summary><div class="tool-body"><form id="campaignForm"><label>Сообщение подписчикам Telegram <textarea name="message" maxlength="3200" required></textarea></label>
 <p>Получатели выбираются фильтрами списка. Для подписки клиент отправляет боту /subscribe, для отмены — /unsubscribe.</p><button>Отправить подписчикам</button></form><p id="campaignStatus" role="status"></p></div></details>
         </div>
 
@@ -690,8 +700,8 @@
 
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
-    <script src="/crm-i18n.js?v=6"></script>
-    <script src="/workspace.js?v=37"></script>
+    <script src="/crm-uk.js?v=1"></script><script src="/crm-i18n.js?v=7"></script>
+    <script src="/workspace.js?v=38"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {
@@ -710,5 +720,5 @@
         message.appendChild(retry);
       }, 15000);
     </script>
-  <script src="/crm-tests.js" defer></script></body>
+  <script src="/crm-tests.js?v=2" defer></script></body>
 </html>

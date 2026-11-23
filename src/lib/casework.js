@@ -1,5 +1,6 @@
 const fs = require('./runtime-fs');
 const path = require('node:path');
+const {readBookings, readCsvBookings, fetchBookings} = require('./reservio-calendar');
 
 function date(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
@@ -49,14 +50,7 @@ function mountCasework(app, {directory, clients, support, worker}) {
     if(calendarPending||Date.now()<nextSync||!process.env.RESERVIO_CALENDAR_URL)return;
     calendarPending=true;nextSync=Date.now()+15*60000;
     try{
-      const url=new URL(process.env.RESERVIO_CALENDAR_URL.replace(/^webcal:/,'https:'));
-      if(url.protocol!=='https:'||!/(^|\.)reservio\.com$/i.test(url.hostname)||url.username||url.password)throw Error('Недопустимый адрес календаря.');
-      const response=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(15000)});
-      if(!response.ok)throw Error('Ошибка календаря '+response.status);
-      const reader=response.body.getReader(),chunks=[];let size=0;
-      while(true){const {value,done}=await reader.read();if(done)break;size+=value.length;
-        if(size>2000000){await reader.cancel();throw Error('Календарь слишком большой.');}chunks.push(value);}
-      const bookings=require('./reservio-calendar').readBookings(Buffer.concat(chunks).toString('utf8'));
+      const bookings=await fetchBookings(process.env.RESERVIO_CALENDAR_URL);
       commit({...state,syncedBookings:bookings,calendarSync:new Date().toISOString(),calendarError:''});
     }catch{commit({...state,calendarError:'Не удалось обновить календарь Reservio.'});}
     finally{calendarPending=false;}
@@ -83,14 +77,28 @@ function mountCasework(app, {directory, clients, support, worker}) {
     support.state.campaigns||={};support.state.campaigns[id]={count};
     support.save();support.flush().catch(()=>{});res.json({count});
   });
+  function saveBookings(incoming) {
+    const entries = new Map((state.bookings || []).map(booking => [booking.id, booking]));
+    for (const event of incoming) entries.set(event.id, event);
+    commit({...state, bookings: [...entries.values()]});
+    return {count: incoming.length};
+  }
   app.post('/api/casework/reservio/import',(req,res)=>{
     try{
-      const incoming=require('./reservio-calendar').readBookings(req.body.ics);
-      const entries=new Map((state.bookings||[]).map(b=>[b.id,b]));
-      for(const event of incoming)entries.set(event.id,event);
-      commit({...state,bookings:[...entries.values()]});
-      res.json({count:incoming.length});
+      const {ics, csv} = req.body || {};
+      res.json(saveBookings(csv === undefined ? readBookings(ics) : readCsvBookings(csv)));
     }catch(error){res.status(400).json({error:error.message});}
+  });
+  app.post('/api/casework/reservio/import-link', async (req, res) => {
+    if (req.panelUser.role !== 'superadmin') {
+      return res.status(403).json({error: 'Импорт по ссылке доступен только владельцу.'});
+    }
+    const {url} = req.body || {};
+    if (typeof url !== 'string' || url.length > 2048) {
+      return res.status(400).json({error: 'Недопустимый адрес календаря.'});
+    }
+    try { res.json(saveBookings(await fetchBookings(url))); }
+    catch (error) { res.status(400).json({error: error.message}); }
   });
   app.get('/api/casework',(req,res)=>res.json(state));
   app.post('/api/casework/:kind',(req,res)=>{

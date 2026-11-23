@@ -40,3 +40,50 @@ test('payments, calendar imports, consent and deadlines survive retries',()=>{
     assert.equal(call('/api/casework').data.bookings.length,1);
   }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
+
+test('Reservio CSV imports quoted fields and updates an existing booking on retry', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'reservio-'));
+  try {
+    const routes = {};
+    const register = (url, handler) => routes[url] = handler;
+    mountCasework({locals: {}, get: register, post: register}, {directory, worker: true});
+    const call = (url, body) => {
+      const res = {code: 200, status(code) {this.code = code; return this;}, json(data) {this.data = data;}};
+      routes[url]({body}, res);
+      return res;
+    };
+    const csv = '\uFEFFBooking ID;Date;Start Time;Service;Client;Status\r\n' +
+      '41;2026-11-24;09:00;"Consultation; follow-up";"Client ""A""";Confirmed\r\n';
+    const endpoint = '/api/casework/reservio/import';
+    assert.equal(call(endpoint, {csv}).data.count, 1);
+    assert.equal(call(endpoint, {csv: csv.replace('Confirmed', 'Cancelled')}).code, 200);
+    assert.equal(call(endpoint, {csv: 'Name,Email\nTest,test@example.invalid'}).code, 400);
+    assert.equal(call(endpoint, {csv: csv + '42;;;;;'}).code, 400);
+    const {bookings} = call('/api/casework').data;
+    assert.equal(bookings.length, 1);
+    assert.equal(bookings[0].title, 'Consultation; follow-up · Client "A"');
+    assert.equal(bookings[0].start, '2026-11-24 09:00');
+    assert.equal(bookings[0].status, 'Cancelled');
+  } finally {
+    fs.rmSync(directory, {recursive: true, force: true});
+  }
+});
+
+test('Reservio URL import rejects unrelated links and restricts access to the owner', async () => {
+  const routes = {};
+  const register = (url, handler) => routes[url] = handler;
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'reservio-link-'));
+  try {
+    mountCasework({locals: {}, get: register, post: register}, {directory, worker: true});
+    const importLink = routes['/api/casework/reservio/import-link'];
+    async function call(role, url) {
+      const response = {code: 200, status(code) {this.code = code; return this;}, json() {}};
+      await importLink({body: {url}, panelUser: {role}}, response);
+      return response.code;
+    }
+    assert.equal(await call('admin', 'webcal://calendar.reservio.com/feed'), 403);
+    assert.equal(await call('superadmin', 'https://reservio.com.example.invalid/feed'), 400);
+  } finally {
+    fs.rmSync(directory, {recursive: true, force: true});
+  }
+});
