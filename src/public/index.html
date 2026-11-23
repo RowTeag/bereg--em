@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/workspace.css?v=9" />
     <link rel="stylesheet" href="/crm-notice.css?v=1" />
     <link rel="stylesheet" href="/inbox-notifications.css?v=2" />
-    <link rel="stylesheet" href="/content-plan.css?v=1" />
+    <link rel="stylesheet" href="/content-plan.css?v=2" />
     <link rel="stylesheet" href="/business.css?v=1" />
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
@@ -144,7 +144,11 @@
 <label>Что нужно прислать <textarea name="text" maxlength="3200" required></textarea></label>
 <label>Срок подачи <input type="date" name="due" required></label><label>Дата напоминания <input type="date" name="remind" required></label>
 <button>Отправить запрос и запланировать напоминание</button></form></details></div></article></div><details class="crm-client-test"><summary>Тест: пример переписки</summary><button type="button" class="crm-test-button" data-crm-test="inbox" aria-label="Тест: пример переписки" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span></details></section>
-        <section id="inbox" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">КЛИЕНТСКИЙ СЕРВИС</span><h2>Диалоги, которые важны.</h2><p id="inboxScope">Обращения ваших клиентов — от первого вопроса до решения.</p></div><div id="inboxNewMessageNotice" class="crm-notice" role="status" aria-live="polite" hidden></div><div class="inbox-toolbar"><input id="inboxSearch" placeholder="Найти клиента или сообщение" aria-label="Поиск обращений"><select id="inboxFilter" aria-label="Статус обращения"><option value="active">Активные</option><option value="all">Все обращения</option><option value="closed">Закрытые</option></select><button id="enableInboxNotifications" class="ghost-btn audio-button" type="button">🔔 Включить звук</button><button id="refreshInbox" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="inboxList"></aside><article class="card inbox-dialog"><div id="inboxConversation"><div class="workspace-empty">Выберите обращение слева<br><small>Здесь появится история переписки.</small></div></div><details id="replyTemplates">
+        <section id="inbox" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">КЛИЕНТСКИЙ СЕРВИС</span><h2>Диалоги, которые важны.</h2><p id="inboxScope">Обращения ваших клиентов — от первого вопроса до решения.</p></div><details id="staffTasksPanel" class="card staff-tasks-panel" hidden>
+  <summary id="staffTasksSummary">Мої завдання</summary>
+  <div id="staffTasksList"></div>
+  <p id="staffTasksStatus" role="status"></p>
+</details><div id="inboxNewMessageNotice" class="crm-notice" role="status" aria-live="polite" hidden></div><div class="inbox-toolbar"><input id="inboxSearch" placeholder="Найти клиента или сообщение" aria-label="Поиск обращений"><select id="inboxFilter" aria-label="Статус обращения"><option value="active">Активные</option><option value="all">Все обращения</option><option value="closed">Закрытые</option></select><button id="enableInboxNotifications" class="ghost-btn audio-button" type="button">🔔 Включить звук</button><button id="refreshInbox" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="inboxList"></aside><article class="card inbox-dialog"><div id="inboxConversation"><div class="workspace-empty">Выберите обращение слева<br><small>Здесь появится история переписки.</small></div></div><details id="replyTemplates">
   <summary>Шаблоны ответов и списки документов</summary>
   <label>Язык
     <select id="replyTemplateLanguage"><option value="uk">Українська</option><option value="hu">Magyar</option><option value="ru">Русский</option><option value="en">English</option></select>
@@ -448,9 +452,14 @@
         </section>
         <section id="content" class="section-panel">
           <div class="workspace-intro"><span class="workspace-kicker">КОНТЕНТ</span><h2>План публикаций</h2><p>Сохраняйте идеи и готовьте материалы для социальных сетей. План виден всей команде.</p></div>
+          <div class="content-plan-toolbar">
+            <label>Поиск публикаций <input id="contentPlanSearch" type="search" placeholder="Название или текст"></label>
+            <button id="contentPlanNew" class="primary-btn" type="button" aria-controls="contentPlanEditor" aria-expanded="false">Новая публикация</button>
+          </div>
+          <p id="contentPlanStatus" role="status"></p>
           <div class="content-planner-layout">
-            <article class="card content-planner-editor"><h3 id="contentPlanFormTitle">Новая публикация</h3><form id="contentPlanForm" class="workspace-form"><input name="id" type="hidden"><label>Название<input name="title" maxlength="120" required placeholder="Например, полезный совет недели"></label><label>Площадка<select name="platform"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="telegram">Telegram</option><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select></label><label>Формат<select name="format"><option value="post">Пост</option><option value="story">История</option><option value="video">Видео</option><option value="short">Shorts</option><option value="reel">Reel</option></select></label><label>Дата и время<input name="scheduledAt" type="datetime-local"></label><label>Текст или заметка<textarea name="text" rows="5" maxlength="5000" placeholder="Черновик текста, идея, ссылки или заметки для команды"></textarea></label><div class="content-plan-actions"><button class="primary-btn" type="submit">Сохранить в план</button><button id="contentPlanCancel" class="ghost-btn" type="button" hidden>Отмена</button></div></form><p id="contentPlanStatus" role="status"></p></article>
-            <article class="card content-planner-list"><div class="card-header"><div><span class="growth-card-kicker">КОМАНДНЫЙ ПЛАН</span><h3>Материалы</h3></div><select id="contentPlanFilter" aria-label="Фильтр материалов"><option value="all">Все</option><option value="draft">Черновики</option><option value="planned">Запланированы</option><option value="published">Опубликованы</option></select></div><div id="contentPlanItems" class="content-plan-items"><div class="workspace-empty">Загрузка плана…</div></div></article>
+            <article id="contentPlanEditor" class="card content-planner-editor" hidden><h3 id="contentPlanFormTitle">Новая публикация</h3><form id="contentPlanForm" class="workspace-form"><input name="id" type="hidden"><label>Название<input name="title" maxlength="120" required placeholder="Например, полезный совет недели"></label><label>Площадка<select name="platform"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="telegram">Telegram</option><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select></label><label>Формат<select name="format"><option value="post">Пост</option><option value="story">История</option><option value="video">Видео</option><option value="short">Shorts</option><option value="reel">Reel</option></select></label><label>Дата и время<input name="scheduledAt" type="datetime-local"></label><label>Текст или заметка<textarea name="text" rows="5" maxlength="5000" placeholder="Черновик текста, идея, ссылки или заметки для команды"></textarea></label><div class="content-plan-actions"><button class="primary-btn" type="submit">Сохранить в план</button><button id="contentPlanCancel" class="ghost-btn" type="button">Отмена</button></div></form></article>
+            <article class="card content-planner-list"><div class="card-header"><div><h3>Материалы <small id="contentPlanCount"></small></h3></div><select id="contentPlanFilter" aria-label="Фильтр материалов"><option value="all">Все</option><option value="draft">Черновики</option><option value="planned">Запланированы</option><option value="published">Опубликованы</option></select></div><div id="contentPlanItems" class="content-plan-items"><div class="workspace-empty">Загрузка плана…</div></div></article>
           </div>
         </section>
 
@@ -677,7 +686,7 @@
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
     <script src="/crm-uk.js?v=2"></script><script src="/crm-i18n.js?v=9"></script>
-    <script src="/workspace.js?v=41"></script>
+    <script src="/workspace.js?v=42"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {

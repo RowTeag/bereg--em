@@ -139,6 +139,18 @@ ${task.note}`);
     try { res.json(saveBookings(await fetchBookings(url))); }
     catch (error) { res.status(400).json({error: error.message}); }
   });
+  app.get('/api/casework/my-tasks', (req, res) => {
+    const operator = req.panelUser.operatorId && support.state.operators?.find(
+      person => person.id === req.panelUser.operatorId && person.enabled);
+    const today = localDay(new Date());
+    if (!operator) return res.json({today,tasks:[]});
+    const names = new Map(clients.list().map(client => [client.id, [client.last,client.first].filter(Boolean).join(' ')]));
+    const tasks = (state.tasks || [])
+      .filter(task => task.assignee === operator.id && !task.completedOn && names.has(task.clientId))
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .map(task => ({id:task.id,kind:task.kind,date:task.date,remindOn:task.remindOn,note:task.note,clientName:names.get(task.clientId)}));
+    res.json({today,tasks});
+  });
   app.get('/api/casework/staff', (req, res) => {
     res.json((support.state.operators || [])
       .map(({id, name, chatId, enabled}) => ({id, name, enabled, telegram: Boolean(chatId)})));
@@ -163,10 +175,14 @@ ${task.note}`);
   });
   app.post('/api/casework/tasks/:id/complete', (req, res) => {
     const row = (state.tasks || []).find(task => task.id === req.params.id);
-    if (!row) return res.sendStatus(404);
+    if (!row || (req.panelUser.role === 'operator' && (
+      !req.panelUser.operatorId || row.assignee !== req.panelUser.operatorId ||
+      !support.state.operators?.some(person => person.id === row.assignee && person.enabled)
+    ))) return res.sendStatus(404);
     if (row.completedOn) return res.json({ok:true});
     try {
-      const completedOn = date(req.body?.date || localDay(new Date()));
+      const completedOn = req.panelUser.role === 'operator'
+        ? localDay(new Date()) : date(req.body?.date || localDay(new Date()));
       if (row.kind === 'status' && completedOn < row.date) throw Error('Дата відповіді має бути не раніше дати запиту.');
       commit({...state, tasks:state.tasks.map(task => task.id === row.id ? {...task, completedOn} : task)});
       res.json({ok:true});

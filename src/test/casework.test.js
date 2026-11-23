@@ -104,9 +104,9 @@ test('case tasks track deadlines, queue staff notices once and record the status
     };
     const clients = {list:() => [{id:'client', first:'Олена', last:'Тест'}]};
     const mount = () => mountCasework(app, {directory, clients, support, worker:true});
-    const call = (url, body, params = {}) => {
-      const response = {code:200, status(code) {this.code = code; return this;}, json(data) {this.data = data;}};
-      routes[url]({body, params}, response);
+    const call = (url, body, params = {}, panelUser={role:'admin'}) => {
+      const response = {code:200, status(code) {this.code = code; return this;}, json(data) {this.data = data;}, sendStatus(code) {this.code = code;}};
+      routes[url]({body, params, panelUser}, response);
       return response;
     };
     mount();
@@ -127,6 +127,17 @@ test('case tasks track deadlines, queue staff notices once and record the status
     assert.equal(call('/api/casework').data.tasks.at(-1).completedOn, '2020-11-25');
     assert.equal(notices.length, 4);
     assert(notices.every(notice => notice.chatId === '12345' && notice.text.includes('Тест Олена')));
+    const staff = {role:'operator', operatorId:'staff'};
+    const unrelated = {role:'operator', operatorId:'someone-else'};
+    const mine = '/api/casework/my-tasks';
+    assert.equal(call(mine, null, {}, staff).data.tasks.length, 4);
+    assert.deepEqual(call(mine, null, {}, unrelated).data.tasks, []);
+    assert.equal(call(mine, null, {}, staff).data.tasks[0].clientName, 'Тест Олена');
+    const complete = '/api/casework/tasks/:id/complete';
+    assert.equal(call(complete, {}, {id:tasks[0].id}, unrelated).code, 404);
+    assert.equal(call(complete, {}, {id:statusId}, staff).code, 404);
+    assert.equal(call(complete, {}, {id:tasks[0].id}, staff).code, 200);
+    assert.equal(call(mine, null, {}, staff).data.tasks.length, 3);
   } finally {
     fs.rmSync(directory, {recursive:true, force:true});
   }

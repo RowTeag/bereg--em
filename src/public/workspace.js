@@ -228,9 +228,10 @@
     } finally { button.disabled = false; }
   };
   function drawCaseTasks() {
-    const container = $('caseTasks');
+    renderCaseTasks($('caseTasks'), (caseData.tasks || []).filter(task => task.clientId === crmId));
+  }
+  function renderCaseTasks(container, rows, {refresh=refreshCasework, status=taskStatus}={}) {
     container.replaceChildren();
-    const rows = (caseData.tasks || []).filter(task => task.clientId === crmId);
     if (!rows.length) {
       container.textContent = 'Завдань поки немає.';
       return;
@@ -238,7 +239,7 @@
     for (const task of rows) {
       const article = document.createElement('article');
       const heading = document.createElement('strong');
-      heading.textContent = taskLabels[task.kind];
+      heading.textContent = [taskLabels[task.kind],task.clientName].filter(Boolean).join(' · ');
       const dates = document.createElement('p');
       const isStatus = task.kind === 'status';
       dates.textContent = isStatus ? 'Запит від ' + task.date : 'Строк ' + task.date + ' · нагадування ' + task.remindOn;
@@ -275,8 +276,8 @@
           button.disabled = true;
           try {
             await post('/api/casework/tasks/' + task.id + '/complete', date ? {date:date.value} : {});
-            await refreshCasework();
-          } catch (error) { taskStatus.textContent = error.message; }
+            await refresh();
+          } catch (error) { status.textContent = error.message; }
           finally { button.disabled = false; }
         };
         article.append(complete);
@@ -284,6 +285,21 @@
       container.append(article);
     }
   }
+  async function loadStaffTasks() {
+    const panel = $('staffTasksPanel'), status = $('staffTasksStatus');
+    panel.hidden = false;
+    try {
+      const {tasks,today} = await api('/api/casework/my-tasks');
+      const attention = tasks.filter(task => task.remindOn <= today).length;
+      $('staffTasksSummary').textContent = 'Мої завдання · ' + tasks.length +
+        (attention ? ' · потребують уваги: ' + attention : '');
+      if (panel.open) renderCaseTasks($('staffTasksList'), tasks, {refresh:loadStaffTasks,status});
+      status.textContent = '';
+    } catch (error) { status.textContent = error.message; }
+  }
+  $('staffTasksPanel').ontoggle = () => {
+    if ($('staffTasksPanel').open) loadStaffTasks();
+  };
   function drawReport(){
     const totals=new Map(),from=$('reportFrom').value,to=$('reportTo').value;
     const box=$('caseTotals');box.replaceChildren();
@@ -551,21 +567,84 @@
   let contentPlanItems=[];
   const planPlatforms={instagram:'Instagram',facebook:'Facebook',telegram:'Telegram',youtube:'YouTube',tiktok:'TikTok'},planFormats={post:'Пост',story:'История',video:'Видео',short:'Shorts',reel:'Reel'},planStatuses={draft:'Черновик',planned:'Запланировано',published:'Опубликовано'};
   const planDate=value=>value?new Date(value).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Без даты';
-  function resetContentPlanForm(){const form=$('contentPlanForm');form.reset();form.elements.id.value='';$('contentPlanFormTitle').textContent='Новая публикация';$('contentPlanCancel').hidden=true;}
-  function editContentPlanItem(item){const form=$('contentPlanForm');for(const [key,value] of Object.entries(item))if(form.elements[key])form.elements[key].value=value||'';$('contentPlanFormTitle').textContent='Изменить публикацию';$('contentPlanCancel').hidden=false;form.scrollIntoView({behavior:'smooth',block:'start'});}
+  function resetContentPlanForm(){const form=$('contentPlanForm');form.reset();form.elements.id.value='';$('contentPlanFormTitle').textContent='Новая публикация';$('contentPlanEditor').hidden=true;$('contentPlanNew').setAttribute('aria-expanded','false');}
+  function showContentPlanForm(){
+    $('contentPlanEditor').hidden=false;
+    $('contentPlanNew').setAttribute('aria-expanded','true');
+    $('contentPlanEditor').scrollIntoView({block:'nearest'});
+    $('contentPlanForm').elements.title.focus({preventScroll:true});
+  }
+  $('contentPlanNew').onclick=()=>{resetContentPlanForm();showContentPlanForm();};
+  function editContentPlanItem(item){const form=$('contentPlanForm');for(const [key,value] of Object.entries(item))if(form.elements[key])form.elements[key].value=value||'';$('contentPlanFormTitle').textContent='Изменить публикацию';showContentPlanForm();}
   async function updateContentPlanItem(item,patch){await api('/api/content-plan/'+encodeURIComponent(item.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...item,...patch})});await loadContentPlan();}
-  function renderContentPlan(){const filter=$('contentPlanFilter').value,items=contentPlanItems.filter(item=>filter==='all'||item.status===filter);$('contentPlanItems').innerHTML=items.length?items.map(item=>`<article class="content-plan-item"><div class="content-plan-item-head"><span class="content-plan-platform">${esc(planPlatforms[item.platform]||item.platform)} · ${esc(planFormats[item.format]||item.format)}</span><span class="content-plan-status status-${esc(item.status)}">${esc(planStatuses[item.status]||item.status)}</span></div><h4>${esc(item.title)}</h4><time>${esc(planDate(item.scheduledAt))}</time>${item.text?`<p>${esc(item.text)}</p>`:''}<div class="content-plan-item-actions"><button class="ghost-btn" type="button" data-plan-edit="${esc(item.id)}">Изменить</button>${item.status!=='published'?`<button class="ghost-btn" type="button" data-plan-publish="${esc(item.id)}">Опубликовано</button>`:''}<button class="ghost-btn" type="button" data-plan-delete="${esc(item.id)}">Удалить</button></div></article>`).join(''):'<div class="workspace-empty">В этом списке пока нет материалов.</div>';$('contentPlanItems').querySelectorAll('[data-plan-edit]').forEach(button=>button.onclick=()=>editContentPlanItem(contentPlanItems.find(item=>item.id===button.dataset.planEdit)));$('contentPlanItems').querySelectorAll('[data-plan-publish]').forEach(button=>button.onclick=()=>{const item=contentPlanItems.find(row=>row.id===button.dataset.planPublish);updateContentPlanItem(item,{status:'published'}).catch(error=>$('contentPlanStatus').textContent=error.message);});$('contentPlanItems').querySelectorAll('[data-plan-delete]').forEach(button=>button.onclick=async()=>{if(!confirm('Удалить материал из плана?'))return;try{await api('/api/content-plan/'+encodeURIComponent(button.dataset.planDelete),{method:'DELETE'});await loadContentPlan();}catch(error){$('contentPlanStatus').textContent=error.message;}});}
+  function renderContentPlan(){
+    const filter = $('contentPlanFilter').value;
+    const query = $('contentPlanSearch').value.trim().toLowerCase();
+    const items = contentPlanItems.filter(item =>
+      (filter === 'all' || item.status === filter) &&
+      [item.title,item.text,planPlatforms[item.platform]].some(value => String(value || '').toLowerCase().includes(query))
+    );
+    const list = $('contentPlanItems');
+    $('contentPlanCount').textContent = items.length;
+    list.innerHTML = items.length ? items.map(item => `
+      <article class="content-plan-item">
+        <div class="content-plan-item-head">
+          <span class="content-plan-platform">${esc(planPlatforms[item.platform] || item.platform)} · ${esc(planFormats[item.format] || item.format)}</span>
+          <span class="content-plan-status status-${esc(item.status)}">${esc(planStatuses[item.status] || item.status)}</span>
+        </div>
+        <h4>${esc(item.title)}</h4>
+        <time>${esc(planDate(item.scheduledAt))}</time>
+        ${item.text ? `<p>${esc(item.text)}</p>` : ''}
+        <div class="content-plan-item-actions">
+          <button class="ghost-btn" type="button" data-plan-edit="${esc(item.id)}">Изменить</button>
+          ${item.status !== 'published' ? `<button class="ghost-btn" type="button" data-plan-publish="${esc(item.id)}">Отметить опубликованным</button>` : ''}
+          <button class="ghost-btn" type="button" data-plan-delete="${esc(item.id)}">Удалить</button>
+        </div>
+      </article>`).join('') : '<div class="workspace-empty">По выбранным условиям материалов нет.</div>';
+    for (const button of list.querySelectorAll('[data-plan-edit]')) {
+      button.onclick = () => editContentPlanItem(contentPlanItems.find(item => item.id === button.dataset.planEdit));
+    }
+    for (const button of list.querySelectorAll('[data-plan-publish]')) {
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          const item = contentPlanItems.find(row => row.id === button.dataset.planPublish);
+          await updateContentPlanItem(item,{status:'published'});
+        } catch (error) { $('contentPlanStatus').textContent = error.message; }
+        finally { button.disabled = false; }
+      };
+    }
+    for (const button of list.querySelectorAll('[data-plan-delete]')) {
+      button.onclick = async () => {
+        if (!confirm('Удалить материал из плана?')) return;
+        button.disabled = true;
+        try {
+          await api('/api/content-plan/' + encodeURIComponent(button.dataset.planDelete),{method:'DELETE'});
+          if ($('contentPlanForm').elements.id.value === button.dataset.planDelete) resetContentPlanForm();
+          await loadContentPlan();
+        } catch (error) { $('contentPlanStatus').textContent = error.message; }
+        finally { button.disabled = false; }
+      };
+    }
+  }
   async function loadContentPlan(){try{const result=await api('/api/content-plan');contentPlanItems=result.items||[];renderContentPlan();}catch(error){$('contentPlanStatus').textContent=error.message;}}
   function renderPublicationCalendar(){const root=$('publicationCalendar'),today=new Date();today.setHours(0,0,0,0);const days=Array.from({length:7},(_,index)=>{const date=new Date(today);date.setDate(date.getDate()+index);const key=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;const items=contentPlanItems.filter(item=>item.status==='planned'&&item.scheduledAt?.slice(0,10)===key);return `<article class="day-card"><h4>${index===0?'Сегодня':index===1?'Завтра':date.toLocaleDateString('ru-RU',{weekday:'long'})}</h4><small>${date.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}</small>${items.length?items.map(item=>`<button type="button" class="calendar-plan-entry" data-calendar-edit="${esc(item.id)}"><strong>${esc(item.title)}</strong><span>${esc(planDate(item.scheduledAt))} · ${esc(planPlatforms[item.platform]||item.platform)}</span></button>`).join(''):'<p class="calendar-empty">Публикаций нет</p>'}</article>`;}).join('');root.innerHTML=days;root.querySelectorAll('[data-calendar-edit]').forEach(button=>button.onclick=()=>{const item=contentPlanItems.find(row=>row.id===button.dataset.calendarEdit);navigate('content');editContentPlanItem(item);});}
   async function loadPublicationCalendar(){try{const result=await api('/api/content-plan');contentPlanItems=result.items||[];renderPublicationCalendar();}catch(error){$('publicationCalendar').textContent=error.message;}}
-  $('contentPlanForm').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;try{const data=Object.fromEntries(new FormData(form));const id=data.id;delete data.id;if(!id)data.status=data.scheduledAt?'planned':'draft';await api('/api/content-plan'+(id?'/'+encodeURIComponent(id):''),{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});$('contentPlanStatus').textContent='Материал сохранён в общем плане.';resetContentPlanForm();await loadContentPlan();}catch(error){$('contentPlanStatus').textContent=error.message;}finally{button.disabled=false;}};
-  $('contentPlanCancel').onclick=resetContentPlanForm;$('contentPlanFilter').onchange=renderContentPlan;$('calendarRefresh').onclick=loadPublicationCalendar;
+  $('contentPlanForm').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;try{const data=Object.fromEntries(new FormData(form));const id=data.id;delete data.id;data.status=contentPlanItems.find(item=>item.id===id)?.status==='published'?'published':data.scheduledAt?'planned':'draft';await api('/api/content-plan'+(id?'/'+encodeURIComponent(id):''),{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});$('contentPlanStatus').textContent='Материал сохранён в общем плане.';resetContentPlanForm();await loadContentPlan();}catch(error){$('contentPlanStatus').textContent=error.message;}finally{button.disabled=false;}};
+  $('contentPlanCancel').onclick=()=>{resetContentPlanForm();$('contentPlanNew').focus();};
+  $('contentPlanSearch').oninput=renderContentPlan;
+  $('contentPlanFilter').onchange=renderContentPlan;$('calendarRefresh').onclick=loadPublicationCalendar;
   async function loadUsers(){if(user.role!=='superadmin')return;try{const [u,t]=await Promise.all([api('/api/users'),api('/api/telegram/status')]);$('workspaceUsers').innerHTML=u.users.map(x=>`<div class="user-row"><div><strong>${esc(x.name)}</strong><small>${esc(x.username)} · ${roles[x.role]} · ${x.enabled?'Активен':'Отключён'}</small></div>${x.role==='superadmin'?'<span class="owner-pill">Владелец</span>':`<div><button class="ghost-btn" data-reset="${x.id}">Новый пароль</button><button class="ghost-btn" data-toggle="${x.id}">${x.enabled?'Отключить':'Включить'}</button></div>`}</div>`).join('');$('operatorLink').innerHTML='<option value="">Новый Telegram-оператор — создать автоматически</option>'+t.operators.filter(o=>o.enabled&&!u.users.some(x=>x.enabled&&x.operatorId===o.id)).map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');$('workspaceUsers').querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{try{await post('/api/users/'+b.dataset.toggle+'/toggle');await loadUsers();}catch(e){$('newUserResult').textContent=e.message;}});$('workspaceUsers').querySelectorAll('[data-reset]').forEach(b=>b.onclick=async()=>{try{const d=await post('/api/users/'+b.dataset.reset+'/reset-password');$('newUserResult').textContent='Новый пароль: '+d.password+'. Предыдущие сеансы завершены. Сохраните пароль.';}catch(e){$('newUserResult').textContent=e.message;}});}catch(e){$('newUserResult').textContent=e.message;}}
   $('createUserForm').role.onchange=e=>{$('operatorLinkLabel').hidden=e.target.value!=='operator';$('operatorLink').required=false;};
   $('createUserForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button');b.disabled=true;let createdTelegramOperator=null;try{const payload=Object.fromEntries(new FormData(f));if(payload.role==='operator'){const existing=await api('/api/users');if(existing.users.some(item=>item.username.toLowerCase()===payload.username.toLowerCase()))throw Error('Этот логин уже существует.');if(!payload.operatorId)createdTelegramOperator=await post('/api/telegram/operators',{name:payload.name});if(createdTelegramOperator)payload.operatorId=createdTelegramOperator.id;}const d=await post('/api/users',payload);$('newUserResult').textContent='Аккаунт CRM создан. Логин: '+d.user.username+' · пароль CRM: '+d.password+'. Сохраните его. '+(createdTelegramOperator?'Доступ в Telegram-бот: /login '+createdTelegramOperator.password+'. Передайте сотруднику оба пароля.':'');f.reset();$('operatorLinkLabel').hidden=true;$('operatorLink').required=false;await loadUsers();}catch(e){$('newUserResult').textContent=e.message+(createdTelegramOperator?' Telegram-оператор уже создан. Его вход: /login '+createdTelegramOperator.password+'. Выберите его в списке и повторите создание аккаунта.':'');await loadUsers();}finally{b.disabled=false;}};
   $('refreshUsers').onclick=loadUsers;
   document.body.classList.remove('auth-loading','feature-loading');
   await Promise.all(modules.map(loadModule));
-  if(user.role==='operator')navigate('inbox');pollInboxNotifications();
+  if(user.role==='operator'){
+    navigate('inbox');
+    loadStaffTasks();
+    setInterval(loadStaffTasks,60000);
+  }
+  pollInboxNotifications();
   setInterval(()=>pollInboxNotifications(),10000);
 })().catch(error=>{document.body.classList.remove('auth-loading','feature-loading');const message=document.createElement('div');message.setAttribute('role','alert');message.style.cssText='position:fixed;z-index:2000;top:12px;left:12px;right:12px;padding:14px 18px;border:1px solid #806b45;border-radius:12px;background:#191815;color:#f3e4bd;box-shadow:0 6px 24px #0008';const text=document.createElement('span');text.textContent=error.name==='AbortError'?'Sign-in is taking too long. Reload the page and try again.':`Workspace could not start: ${error.message||'reload the page and try again.'}`;const button=document.createElement('button');button.type='button';button.textContent='Reload';button.style.cssText='margin-left:12px;border:1px solid #9b7937;border-radius:8px;padding:7px 10px;background:#ffd269;color:#171511;cursor:pointer';button.onclick=()=>location.reload();message.append(text,button);document.querySelector('.main-panel')?.prepend(message);});
