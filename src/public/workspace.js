@@ -92,7 +92,7 @@
     event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');
     const ids=[...visibleClientIds],text=form.elements.message.value.trim();
     if(!ids.length||!text)return;
-    if(!window.confirm('Отправить сообщение подписавшимся в Telegram из выбранной группы ('+ids.length+' карточек)?'))return;
+    if(!window.confirm(window.crmTranslate('Отправить сообщение подписавшимся в Telegram из выбранной группы ('+ids.length+' карточек)?')))return;
     button.disabled=true;
     try{
       const key=JSON.stringify([ids,text]);
@@ -162,7 +162,7 @@
     $('caseRequests').replaceChildren();
     for(const r of caseData.requests.filter(r=>r.clientId===crmId)){
       const line=document.createElement('p');
-      line.textContent=r.text+' · до '+r.due+' · '+(r.done?'Получено':'Напоминание '+r.remind)+' ';
+      line.textContent=r.text+' · до '+r.due+' · '+(r.done?window.crmTranslate('Получено'):window.crmTranslate('Напоминание')+' '+r.remind)+' ';
       if(!r.done){
         const done=document.createElement('button');done.type='button';done.textContent='Отметить полученным';
         done.onclick=async()=>{try{await post('/api/casework/requests/'+r.id+'/complete');await refreshCasework();}catch(e){$('crmStatus').textContent=e.message;}};
@@ -223,13 +223,25 @@
         if(today<start)continue;
         const button=document.createElement('button');
         button.type='button';button.className='ghost-btn';
-        button.textContent=[client.last,client.first,'·',doc.fileName,'·',today>expiry?'Срок истёк':'Истекает',doc.expiresOn].join(' ');
+        button.textContent=[client.last,client.first,'·',doc.fileName,'·',window.crmTranslate(today>expiry?'Срок истёк':'Истекает'),doc.expiresOn].join(' ');
         button.onclick=()=>openCrm(client.id);
         box.append(button);
       }
     }
   }
-  $('officeUpload').onsubmit=async event=>{
+  const officeUploadForm=$('officeUpload');
+  const officeUploadFilename=$('officeUploadFilename');
+  const officeFileInput=officeUploadForm.elements.scan;
+  officeFileInput.addEventListener('change',()=>{
+    const file=officeFileInput.files[0];
+    officeUploadFilename.textContent=file?.name||'';
+    officeUploadFilename.hidden=!file;
+  });
+  officeUploadForm.addEventListener('reset',()=>{
+    officeUploadFilename.textContent='';
+    officeUploadFilename.hidden=true;
+  });
+  officeUploadForm.onsubmit=async event=>{
     event.preventDefault();
     const form=event.currentTarget, clientId=crmId, file=form.elements.scan.files[0];
     if(!clientId||!file)return;

@@ -468,3 +468,75 @@ body:has(.login-layout) {
 @media (max-width: 760px) {
   .crm-casework-tools form > button { width: 100%; }
 }
+
+.crm-office-upload {
+  display: grid;
+  gap: 14px;
+  margin-block: 16px;
+  padding: 16px;
+  background: var(--desk-raised);
+  border: 1px solid var(--desk-line);
+  border-radius: 12px;
+}
+
+.crm-office-upload h4 { margin: 0; }
+
+.crm-office-upload-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.crm-office-upload-file,
+.crm-office-upload-expiry {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: .875rem;
+}
+
+.crm-office-upload-picker {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: var(--desk-base);
+  border: 1px dashed var(--desk-muted);
+  border-radius: 10px;
+  font-weight: 650;
+}
+
+.crm-office-upload-picker input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.crm-office-upload-picker:focus-within {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: 3px;
+}
+
+#officeUploadHint { color: var(--desk-muted); }
+#officeUploadFilename { overflow-wrap: anywhere; }
+
+.crm-office-upload-expiry input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px !important;
+}
+
+.crm-office-upload button.ghost-btn {
+  justify-self: start;
+  min-height: 44px !important;
+}
+
+@media (max-width: 760px) {
+  .crm-office-upload-fields { grid-template-columns: minmax(0, 1fr); }
+  .crm-office-upload button { width: 100%; }
+}
