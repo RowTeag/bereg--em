@@ -193,7 +193,9 @@
     const clientId = inChat
       ? crmRecords.find(client => client.dialogIds?.includes(dialogId))?.id
       : crmId;
+    $('inboxCaseTasksArea').hidden = !inChat;
     inboxCaseTasks.hidden = !inChat;
+    caseTaskHome.hidden = inChat || !clientId;
     $('inboxCaseTasksHint').hidden = !inChat || Boolean(clientId);
     const destination = inChat && clientId ? inboxCaseTasks : caseTaskHome;
     if (caseTaskPanel.parentElement !== destination) destination.prepend(caseTaskPanel);

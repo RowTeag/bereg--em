@@ -582,3 +582,5 @@ body:has(.login-layout) {
   color: var(--desk-muted);
   font-size: .875rem;
 }
+
+#inbox #inboxCaseTasksArea { margin: 12px 0 0; }
