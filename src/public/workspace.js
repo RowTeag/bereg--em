@@ -72,7 +72,9 @@
   let visibleClientIds=[];
   function renderCrm(){const filters=Object.fromEntries(new FormData($('clientFilters')));
     const matches=c=>{
-      for(const key of ['service','country','caseStatus','activeOrder','language'])if(filters[key]&&!String(c[key]||'').toLowerCase().includes(filters[key].toLowerCase()))return false;
+      for(const key of ['service','country','caseStatus'])if(filters[key]&&!String(c[key]||'').toLowerCase().includes(filters[key].toLowerCase()))return false;
+      if ((filters.activeOrder && c.activeOrder !== filters.activeOrder) ||
+          (filters.language && c.language !== filters.language)) return false;
       const day=(c.createdAt||'').slice(0,10);
       if((filters.from&&day<filters.from)||(filters.to&&day>filters.to))return false;
       if(filters.history){const paid=caseData.payments.some(p=>p.clientId===c.id);if(paid!==(filters.history==='paid'))return false;}

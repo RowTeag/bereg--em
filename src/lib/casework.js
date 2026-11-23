@@ -77,15 +77,21 @@ ${task.note}`);
       if(item.remind<=today)enqueue(item,'reminder');
     }
   }
-  let calendarPending=false,nextSync=0;
+  let calendarPending = false, nextSync = 0;
+  const calendarAddress = () => state.calendarUrl || process.env.RESERVIO_CALENDAR_URL;
   async function syncCalendar(){
-    if(calendarPending||Date.now()<nextSync||!process.env.RESERVIO_CALENDAR_URL)return;
-    calendarPending=true;nextSync=Date.now()+15*60000;
-    try{
-      const bookings=await fetchBookings(process.env.RESERVIO_CALENDAR_URL);
-      commit({...state,syncedBookings:bookings,calendarSync:new Date().toISOString(),calendarError:''});
-    }catch{commit({...state,calendarError:'Не удалось обновить календарь Reservio.'});}
-    finally{calendarPending=false;}
+    const address = calendarAddress();
+    if (calendarPending || Date.now() < nextSync || !address) return;
+    calendarPending = true;
+    nextSync = Date.now() + 15 * 60000;
+    try {
+      const bookings = await fetchBookings(address);
+      commit({...state, syncedBookings: bookings, calendarSync: new Date().toISOString(), calendarError: ''});
+    } catch {
+      commit({...state, calendarError: 'Не удалось обновить календарь Reservio.'});
+    } finally {
+      calendarPending = false;
+    }
   }
   async function runTick(){try{tick();await support.flush();await syncCalendar();}catch(error){console.error('CRM reminders:',error.message);}}
   app.locals.beregCaseworkTick=runTick;
@@ -129,8 +135,19 @@ ${task.note}`);
     if (typeof url !== 'string' || url.length > 2048) {
       return res.status(400).json({error: 'Недопустимый адрес календаря.'});
     }
-    try { res.json(saveBookings(await fetchBookings(url))); }
-    catch (error) { res.status(400).json({error: error.message}); }
+    if (calendarPending) return res.status(409).json({error: 'Зачекайте, поки закінчиться оновлення календаря.'});
+    calendarPending = true;
+    try {
+      const bookings = await fetchBookings(url);
+      commit({...state, calendarUrl: url.trim(), syncedBookings: bookings,
+        calendarSync: new Date().toISOString(), calendarError: ''});
+      nextSync = Date.now() + 15 * 60000;
+      res.json({count: bookings.length});
+    } catch (error) {
+      res.status(400).json({error: error.message});
+    } finally {
+      calendarPending = false;
+    }
   });
   app.get('/api/casework/my-tasks', (req, res) => {
     const operator = req.panelUser.operatorId && support.state.operators?.find(
@@ -181,7 +198,10 @@ ${task.note}`);
       res.json({ok:true});
     } catch (error) { res.status(400).json({error:error.message}); }
   });
-  app.get('/api/casework',(req,res)=>res.json(state));
+  app.get('/api/casework', (req, res) => {
+    const {calendarUrl, ...publicState} = state;
+    res.json(publicState);
+  });
   app.post('/api/casework/:kind',(req,res)=>{
     try {
       const input=req.body||{}, kind=req.params.kind;

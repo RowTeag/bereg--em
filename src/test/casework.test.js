@@ -142,3 +142,39 @@ test('case tasks track deadlines, queue staff notices once and record the status
     fs.rmSync(directory, {recursive:true, force:true});
   }
 });
+
+test('Reservio link stays private and refreshes after restart', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'reservio-sync-'));
+  t.after(() => fs.rmSync(directory, {recursive: true, force: true}));
+  const address = 'https://calendar.reservio.com/example.ics?token=test-private';
+  let summary = 'First title', requests = 0;
+  t.mock.method(globalThis, 'fetch', async url => {
+    assert.equal(url.href, address);
+    requests++;
+    return new Response([
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:one',
+      'DTSTART:20261121T100000Z', 'SUMMARY:' + summary, 'END:VEVENT', 'END:VCALENDAR', ''
+    ].join('\r\n'));
+  });
+  const routes = {};
+  const register = (url, handler) => { routes[url] = handler; };
+  const app = {locals: {}, get: register, post: register};
+  const support = {state: {}, async flush() {}};
+  const mount = () => mountCasework(app, {directory, support, worker: true});
+  const call = async (route, body) => {
+    const response = {json(data) {this.data = data;}};
+    await routes[route]({body, panelUser: {role: 'superadmin'}}, response);
+    return response.data;
+  };
+  mount();
+  assert.deepEqual(await call('/api/casework/reservio/import-link', {url: address}), {count: 1});
+  await app.locals.beregCaseworkTick();
+  assert.equal(requests, 1);
+  summary = 'Updated title';
+  mount();
+  await app.locals.beregCaseworkTick();
+  const state = await call('/api/casework');
+  assert.equal(requests, 2);
+  assert.deepEqual(state.syncedBookings.map(booking => booking.title), ['Updated title']);
+  assert.equal(Object.hasOwn(state, 'calendarUrl'), false);
+});
