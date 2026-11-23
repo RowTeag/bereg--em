@@ -570,3 +570,15 @@ body:has(.login-layout) {
 @media (max-width: 760px) {
   #inbox.inbox-chat-open #staffTasksPanel { display: none; }
 }
+
+#inboxCaseTasks > details {
+  min-width: 0;
+  border: 1px solid var(--desk-line);
+  border-radius: 14px;
+}
+
+#inboxCaseTasksHint {
+  margin: 0;
+  color: var(--desk-muted);
+  font-size: .875rem;
+}

@@ -52,7 +52,7 @@
   }
   syncSidebarGroups(user.role==='operator'?'inbox':(document.querySelector('.section-panel.active')?.id||'dashboard'));
   $('logoutBtn').onclick=async()=>{await post('/api/auth/logout');location.replace('/login');};
-  function navigate(target){document.querySelectorAll('.section-panel').forEach(e=>e.classList.toggle('active',e.id===target));document.querySelectorAll('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.target===target));syncSidebarGroups(target);if(target==='inbox'||target==='team-access'){$('pageTitle').textContent=target==='inbox'?'Обращения':'Команда и доступ';document.querySelector('.topbar-actions').hidden=true;}if(target==='content')$('pageTitle').textContent='Контент';if(target==='calendar')$('pageTitle').textContent='Календарь';if(target==='employees')$('pageTitle').textContent='Employees';document.body.classList.remove('mobile-menu-open');if(target==='clients'){loadCrm();$('pageTitle').textContent='Клиенты';document.querySelector('.topbar-actions').hidden=true;}if(target==='inbox')loadInbox();if(target==='team-access')loadUsers();if(target==='content')loadContentPlan();if(target==='calendar')loadPublicationCalendar();}
+  function navigate(target){document.querySelectorAll('.section-panel').forEach(e=>e.classList.toggle('active',e.id===target));document.querySelectorAll('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.target===target));syncSidebarGroups(target);if(target==='inbox'||target==='team-access'){$('pageTitle').textContent=target==='inbox'?'Обращения':'Команда и доступ';document.querySelector('.topbar-actions').hidden=true;}if(target==='content')$('pageTitle').textContent='Контент';if(target==='calendar')$('pageTitle').textContent='Календарь';if(target==='employees')$('pageTitle').textContent='Employees';document.body.classList.remove('mobile-menu-open');if(target==='clients'){loadCrm();$('pageTitle').textContent='Клиенты';document.querySelector('.topbar-actions').hidden=true;}placeCaseTaskPanel();if(target==='inbox'){if(user.role!=='operator'&&!crmRecords.length)void loadCrm();loadInbox();}if(target==='team-access')loadUsers();if(target==='content')loadContentPlan();if(target==='calendar')loadPublicationCalendar();}
   document.querySelectorAll('.nav-item').forEach(e=>e.addEventListener('click',()=>{if(!e.hidden)navigate(e.dataset.target);}));
   if(user.role==='operator')$('mobileMenuBtn').onclick=()=>{const on=document.body.classList.toggle('mobile-menu-open');$('mobileMenuBtn').setAttribute('aria-expanded',on);};
   let crmRecords=[],crmId=null,crmAcknowledgedApplications=new Set();
@@ -183,6 +183,30 @@
   const taskForm = $('caseTaskForm');
   const taskLabels = Object.fromEntries([...taskForm.elements.kind.options].map(option => [option.value, option.textContent]));
   const taskStatus = $('caseTaskStatus');
+  const caseTaskPanel = $('caseTaskDetails');
+  const caseTaskHome = caseTaskPanel.parentElement;
+  const inboxCaseTasks = $('inboxCaseTasks');
+  let taskClientId = null;
+
+  function placeCaseTaskPanel(dialogId = selected) {
+    const inChat = user.role !== 'operator' && $('inbox').classList.contains('active') && Boolean(dialogId);
+    const clientId = inChat
+      ? crmRecords.find(client => client.dialogIds?.includes(dialogId))?.id
+      : crmId;
+    inboxCaseTasks.hidden = !inChat;
+    $('inboxCaseTasksHint').hidden = !inChat || Boolean(clientId);
+    const destination = inChat && clientId ? inboxCaseTasks : caseTaskHome;
+    if (caseTaskPanel.parentElement !== destination) destination.prepend(caseTaskPanel);
+    if ((clientId || null) === taskClientId) return;
+    taskClientId = clientId || null;
+    caseTaskPanel.open = false;
+    taskForm.reset();
+    updateTaskFields();
+    delete taskForm.dataset.operation;
+    taskStatus.textContent = '';
+    drawCaseTasks();
+  }
+
   let taskStaff = [];
   function updateTaskFields() {
     const isStatus = taskForm.elements.kind.value === 'status';
@@ -194,7 +218,8 @@
   $('caseTaskDetails').ontoggle = async () => {
     if (!$('caseTaskDetails').open) return;
     try {
-      taskStaff = await api('/api/casework/staff');
+      const [staff] = await Promise.all([api('/api/casework/staff'), refreshCasework()]);
+      taskStaff = staff;
       const select = taskForm.elements.assignee;
       const previous = select.value;
       select.replaceChildren(new Option('Виберіть працівника', ''));
@@ -208,14 +233,15 @@
   taskForm.oninput = () => { delete taskForm.dataset.operation; };
   taskForm.onsubmit = async event => {
     event.preventDefault();
-    const clientId = crmId;
+    const clientId = taskClientId;
+    if (!clientId) return;
     const button = taskForm.querySelector('button');
     const fields = Object.fromEntries(new FormData(taskForm));
     taskForm.dataset.operation ||= crypto.randomUUID();
     button.disabled = true;
     try {
       await post('/api/casework/tasks', {...fields, id:taskForm.dataset.operation, clientId});
-      if (crmId === clientId) {
+      if (taskClientId === clientId) {
         taskForm.reset();
         updateTaskFields();
         delete taskForm.dataset.operation;
@@ -223,11 +249,11 @@
       }
       await refreshCasework();
     } catch (error) {
-      if (crmId === clientId) taskStatus.textContent = error.message;
+      if (taskClientId === clientId) taskStatus.textContent = error.message;
     } finally { button.disabled = false; }
   };
   function drawCaseTasks() {
-    renderCaseTasks($('caseTasks'), (caseData.tasks || []).filter(task => task.clientId === crmId));
+    renderCaseTasks($('caseTasks'), (caseData.tasks || []).filter(task => task.clientId === taskClientId));
   }
   function renderCaseTasks(container, rows, {refresh=refreshCasework, status=taskStatus}={}) {
     container.replaceChildren();
@@ -331,15 +357,8 @@
     };
   }
   async function openCrm(id){
-    if (crmId !== id) {
-      $('caseTaskDetails').open = false;
-      taskForm.reset();
-      updateTaskFields();
-      delete taskForm.dataset.operation;
-      taskStatus.textContent = '';
-    }
     if(crmId!==id){for(const name of ['casePayForm','caseRequestForm']){$(name).reset();delete $(name).dataset.operation;}}
-    crmId=id;drawCasework();if(id)refreshCasework().catch(e=>{$('crmStatus').textContent=e.message;});$('officeUpload').reset();crmForm.reset();$('crmStatus').textContent='';const c=crmRecords.find(x=>x.id===id);$('crmTitle').textContent=c?c.last+' '+c.first:'Новый клиент';$('crmDialogs').replaceChildren();renderCrmDocuments(c);if(!c)return;for(const e of crmForm.elements)if(e.name)e.value=c[e.name]||'';
+    crmId=id;placeCaseTaskPanel();drawCasework();if(id)refreshCasework().catch(e=>{$('crmStatus').textContent=e.message;});$('officeUpload').reset();crmForm.reset();$('crmStatus').textContent='';const c=crmRecords.find(x=>x.id===id);$('crmTitle').textContent=c?c.last+' '+c.first:'Новый клиент';$('crmDialogs').replaceChildren();renderCrmDocuments(c);if(!c)return;for(const e of crmForm.elements)if(e.name)e.value=c[e.name]||'';
   $('crmDialogs').innerHTML=`<h3>Связаться с клиентом</h3><p>Ссылки открывают приложение. Наличие аккаунта по номеру не проверено.</p><div class="crm-contact-actions">${c.phone?`<a class="ghost-btn" href="https://wa.me/${encodeURIComponent(c.phone)}" target="_blank" rel="noopener">WhatsApp ↗</a> <a class="ghost-btn" href="https://t.me/+${encodeURIComponent(c.phone)}" target="_blank" rel="noopener">Telegram ↗</a> <a class="ghost-btn" href="tel:+${encodeURIComponent(c.phone)}">Позвонить</a>`:'<span>Телефон не указан в обращении</span>'}</div><p>Переписка в панели появляется после обращения клиента через подключённый канал.</p>`;
   for(const d of c.dialogs||[]){const b=document.createElement('button');b.className='ghost-btn';b.textContent='Диалог '+d.provider;b.onclick=()=>{selected=d.id;navigate('inbox');};$('crmDialogs').querySelector('.crm-contact-actions').append(b);}
   try{const result=await api('/api/telegram/inbox');if(crmId!==id)return;const select=document.createElement('select');select.className='ghost-btn';select.setAttribute('aria-label','Связать существующий диалог');select.add(new Option('Выберите существующий диалог',''));for(const d of result.clients)select.add(new Option((d.provider||'Telegram')+' · '+d.name+' · '+(d.contact||d.id),d.id));const button=document.createElement('button');button.className='ghost-btn';button.textContent='Связать с клиентом';button.onclick=async()=>{if(!select.value)return;try{await post('/api/clients/'+encodeURIComponent(id)+'/dialogs',{dialogId:select.value});await loadCrm();await openCrm(id);}catch(e){$('crmStatus').textContent=e.message;}};const linkForm=document.createElement('div');linkForm.className='crm-dialog-link';linkForm.append(select,button);$('crmDialogs').append(linkForm);}catch(e){$('crmStatus').textContent=e.message;}}
@@ -397,7 +416,7 @@
     }catch(error){if(crmId===clientId)status.textContent=error.message;}
     finally{button.disabled=false;}
   };
-  async function loadCrm(){try{const d=await api('/api/clients');const applications=d.clients.flatMap(client=>(client.attachments||[]).filter(a=>a.source!=='office').map(attachment=>({key:client.id+':'+attachment.id,client,attachment})));announceCrmApplications(applications.filter(a=>!crmAcknowledgedApplications.has(a.key)));crmRecords=d.clients;renderExpiryWarnings();renderCrm();if(crmId)renderCrmDocuments(crmRecords.find(c=>c.id===crmId));const sync=await api('/api/clients-sync');if(sync.error)$('crmStatus').textContent='Синхронизация: '+sync.error;}catch(e){$('crmStatus').textContent=e.message;}}
+  async function loadCrm(){try{const d=await api('/api/clients');const applications=d.clients.flatMap(client=>(client.attachments||[]).filter(a=>a.source!=='office').map(attachment=>({key:client.id+':'+attachment.id,client,attachment})));announceCrmApplications(applications.filter(a=>!crmAcknowledgedApplications.has(a.key)));crmRecords=d.clients;placeCaseTaskPanel();renderExpiryWarnings();renderCrm();if(crmId)renderCrmDocuments(crmRecords.find(c=>c.id===crmId));const sync=await api('/api/clients-sync');if(sync.error)$('crmStatus').textContent='Синхронизация: '+sync.error;}catch(e){$('crmStatus').textContent=e.message;}}
   setInterval(()=>{if(!document.hidden)loadCrm();},15000);
   $('crmSearch').oninput=renderCrm;$('crmNew').onclick=()=>openCrm(null);$('crmRefresh').onclick=async()=>{try{await post('/api/clients-sync');await loadCrm();$('crmStatus').textContent='Заявки с сайта обновлены';}catch(e){$('crmStatus').textContent=e.message;}};
   crmForm.onsubmit=async e=>{e.preventDefault();const b=crmForm.querySelector('button');b.disabled=true;try{const d=await api('/api/clients'+(crmId?'/'+encodeURIComponent(crmId):''),{method:crmId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(crmForm)))});await loadCrm();await openCrm(d.client.id);$('crmStatus').textContent='Анкета сохранена';}catch(e){$('crmStatus').textContent=e.message;}finally{b.disabled=false;}};
@@ -544,7 +563,7 @@
     }
     host.replaceChildren(tools);
   }
-  function renderConversation(){if(insertedTemplate&&insertedTemplate.dialogId!==selected){$('inboxReply').value='';insertedTemplate=null;}const c=clients.find(c=>c.id===selected);$('inbox').classList.toggle('inbox-chat-open',Boolean(c)&&mobileChatOpen);$('inboxReplyForm').hidden=!c||Boolean(c.loading);$('inboxDialogTools').hidden=!c||Boolean(c.loading);$('replyTemplates').hidden=Boolean(c?.loading);if(!c){$('inboxDialogTools').replaceChildren();$('replyTemplates').open=false;$('inboxConversation').innerHTML='<div class="workspace-empty">Выберите обращение</div>';return;}if(c.loading){$('inboxConversation').innerHTML='<div class="workspace-empty">Загружаю переписку…</div>';return;}$('inboxConversation').dataset.auditDialog=c.id;$('inboxReplyForm').dataset.auditDialog=c.id;const sourceUrl=safeExternalUrl(c.sourceUrl);$('inboxConversation').innerHTML=`<div class="conversation-title"><div><h3>${esc(c.name)} <i class="source-pill source-${esc(c.provider||'telegram')}">${esc(providerName(c))}</i></h3>${c.contact?`<span>${esc(c.contact)}${sourceUrl?` · <a href="${esc(sourceUrl)}" target="_blank" rel="noopener">открыть диалог ↗</a>`:''}</span>`:''}<small class="client-language">${esc(clientLanguageLabel(c.language))}</small></div><span>${esc(c.operatorName)} · ${stateLabel(c.status)}</span></div><div class="message-list">${c.history.map(h=>`<div class="message ${h.direction==='out'?'outgoing':''}"><small>${h.direction==='out'?'Команда BEREG':providerName(c)}${h.direction==='in'&&h.sourceLanguage?` · ${esc(languageNames[h.sourceLanguage]||h.sourceLanguage)}`:''}</small><p>${esc(h.text)}</p>${h.originalText&&h.originalText!==h.text?`<details><summary>Исходное сообщение</summary><p>${esc(h.originalText)}</p></details>`:''}${(h.attachments||[]).map(f=>safeExternalUrl(f.url)?'<a href="'+esc(safeExternalUrl(f.url))+'" target="_blank" rel="noopener noreferrer">'+esc(f.name)+'</a>':'').join(' ')}${h.attachment?'<a download href="/api/telegram/inbox/'+encodeURIComponent(c.id)+'/files/'+encodeURIComponent(h.attachment.id)+'">'+esc(h.attachment.name)+'</a>':''}<time>${new Date(h.at).toLocaleString(document.documentElement.lang)}</time></div>`).join('')}</div>`;renderDialogTools(c);const title=$('inboxConversation').querySelector('.conversation-title');const addClient=document.createElement('button');addClient.type='button';addClient.className='ghost-btn';addClient.textContent='Добавить в клиентов';addClient.onclick=async()=>{addClient.disabled=true;try{const result=await post('/api/clients/from-inbox/'+encodeURIComponent(c.id));$('inboxStatus').textContent=result.existing?'Обращение уже связано с карточкой клиента.':'Клиент добавлен, обращение привязано к карточке.';if(user.role!=='operator'){await loadCrm();navigate('clients');await openCrm(result.client.id);}}catch(error){$('inboxStatus').textContent=error.message;}finally{addClient.disabled=false;}};title.append(addClient);const list=$('inboxConversation').querySelector('.message-list');list.scrollTop=list.scrollHeight;}
+  function renderConversation(){if(insertedTemplate&&insertedTemplate.dialogId!==selected){$('inboxReply').value='';insertedTemplate=null;}const c=clients.find(c=>c.id===selected);placeCaseTaskPanel(c?.id ?? null);$('inbox').classList.toggle('inbox-chat-open',Boolean(c)&&mobileChatOpen);$('inboxReplyForm').hidden=!c||Boolean(c.loading);$('inboxDialogTools').hidden=!c||Boolean(c.loading);$('replyTemplates').hidden=Boolean(c?.loading);if(!c){$('inboxDialogTools').replaceChildren();$('replyTemplates').open=false;$('inboxConversation').innerHTML='<div class="workspace-empty">Выберите обращение</div>';return;}if(c.loading){$('inboxConversation').innerHTML='<div class="workspace-empty">Загружаю переписку…</div>';return;}$('inboxConversation').dataset.auditDialog=c.id;$('inboxReplyForm').dataset.auditDialog=c.id;const sourceUrl=safeExternalUrl(c.sourceUrl);$('inboxConversation').innerHTML=`<div class="conversation-title"><div><h3>${esc(c.name)} <i class="source-pill source-${esc(c.provider||'telegram')}">${esc(providerName(c))}</i></h3>${c.contact?`<span>${esc(c.contact)}${sourceUrl?` · <a href="${esc(sourceUrl)}" target="_blank" rel="noopener">открыть диалог ↗</a>`:''}</span>`:''}<small class="client-language">${esc(clientLanguageLabel(c.language))}</small></div><span>${esc(c.operatorName)} · ${stateLabel(c.status)}</span></div><div class="message-list">${c.history.map(h=>`<div class="message ${h.direction==='out'?'outgoing':''}"><small>${h.direction==='out'?'Команда BEREG':providerName(c)}${h.direction==='in'&&h.sourceLanguage?` · ${esc(languageNames[h.sourceLanguage]||h.sourceLanguage)}`:''}</small><p>${esc(h.text)}</p>${h.originalText&&h.originalText!==h.text?`<details><summary>Исходное сообщение</summary><p>${esc(h.originalText)}</p></details>`:''}${(h.attachments||[]).map(f=>safeExternalUrl(f.url)?'<a href="'+esc(safeExternalUrl(f.url))+'" target="_blank" rel="noopener noreferrer">'+esc(f.name)+'</a>':'').join(' ')}${h.attachment?'<a download href="/api/telegram/inbox/'+encodeURIComponent(c.id)+'/files/'+encodeURIComponent(h.attachment.id)+'">'+esc(h.attachment.name)+'</a>':''}<time>${new Date(h.at).toLocaleString(document.documentElement.lang)}</time></div>`).join('')}</div>`;renderDialogTools(c);const title=$('inboxConversation').querySelector('.conversation-title');const addClient=document.createElement('button');addClient.type='button';addClient.className='ghost-btn';addClient.textContent='Добавить в клиентов';addClient.onclick=async()=>{addClient.disabled=true;try{const result=await post('/api/clients/from-inbox/'+encodeURIComponent(c.id));$('inboxStatus').textContent=result.existing?'Обращение уже связано с карточкой клиента.':'Клиент добавлен, обращение привязано к карточке.';if(user.role!=='operator'){await loadCrm();navigate('clients');await openCrm(result.client.id);}}catch(error){$('inboxStatus').textContent=error.message;}finally{addClient.disabled=false;}};title.append(addClient);const list=$('inboxConversation').querySelector('.message-list');list.scrollTop=list.scrollHeight;}
   async function loadConversation(id){const client=clients.find(item=>item.id===id);if(!client)return;client.loading=true;if(selected===id)renderConversation();try{const result=await api('/api/telegram/inbox/'+encodeURIComponent(id)+'?language='+encodeURIComponent(replyLanguage));const index=clients.findIndex(item=>item.id===id);if(index>=0)clients[index]=result.client;if(selected===id)renderConversation();}catch(error){client.loading=false;if(selected===id){$('inboxStatus').textContent=error.message;renderConversation();}}}
   let lastSyncedOperatorLanguage='';async function syncOperatorLanguage(){if(user.role!=='operator')return;const language=replyLanguage;if(!supportedReplyLanguages.includes(language)||language===lastSyncedOperatorLanguage)return;try{await api('/api/telegram/operator-language',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({language})});lastSyncedOperatorLanguage=language;}catch(error){$('inboxStatus').textContent=error.message;}}
   document.addEventListener('crm-language-change',()=>{replyLanguage=interfaceLanguage();lastSyncedOperatorLanguage='';renderCrm();renderList();renderConversation();syncOperatorLanguage();if($('inbox').classList.contains('active'))loadInbox();});

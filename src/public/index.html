@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
   <link rel="stylesheet" href="/crm-tests.css">
-    <link rel="stylesheet" href="/crm-layout.css?v=7" />
+    <link rel="stylesheet" href="/crm-layout.css?v=8" />
 
 </head>
   <body class="auth-loading feature-loading">
@@ -161,6 +161,7 @@
   <p id="staffTasksStatus" role="status"></p>
 </details><div id="inboxNewMessageNotice" class="crm-notice" role="status" aria-live="polite" hidden></div><div class="inbox-toolbar"><input id="inboxSearch" placeholder="Найти клиента или сообщение" aria-label="Поиск обращений"><select id="inboxFilter" aria-label="Статус обращения"><option value="active">Активные</option><option value="all">Все обращения</option><option value="closed">Закрытые</option></select><button id="enableInboxNotifications" class="ghost-btn audio-button" type="button">🔔 Включить звук</button><button id="refreshInbox" class="ghost-btn">Обновить</button></div><p id="inboxStatus" role="status"></p><div class="inbox-layout"><aside class="card" id="inboxList"></aside><article class="card inbox-dialog" aria-label="Переписка"><button id="inboxBack" class="ghost-btn" type="button">← Все обращения</button><div id="inboxConversation"><div class="workspace-empty">Выберите обращение слева<br><small>Здесь появится история переписки.</small></div></div><form id="inboxReplyForm" hidden><label for="inboxReply">Ответ клиенту</label><textarea id="inboxReply" name="message" maxlength="3500" rows="3" required placeholder="Напишите ответ…"></textarea><div class="inbox-reply-actions"><button class="primary-btn">Отправить ответ</button><button class="ghost-btn" type="button" id="closeTicket">Закрыть обращение</button></div></form>
 <div class="crm-tools inbox-tools">
+<div id="inboxCaseTasks" hidden><p id="inboxCaseTasksHint" hidden>Щоб додати завдання, прив’яжіть чат до картки клієнта.</p></div>
 <div id="inboxDialogTools" hidden></div>
 <details id="replyTemplates">
   <summary>Шаблоны ответов и списки документов</summary>
@@ -709,7 +710,7 @@
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
     <script src="/crm-uk.js?v=5"></script><script src="/crm-i18n.js?v=10"></script>
-    <script src="/workspace.js?v=44"></script>
+    <script src="/workspace.js?v=45"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {
