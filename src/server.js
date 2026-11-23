@@ -1472,6 +1472,7 @@ const telegramSupport = require('./lib/telegram-support').mountSupport(app, {
   webhookSecret: process.env.BEREG_TG_WEBHOOK_SECRET || '',
   webhookBaseUrl: process.env.BEREG_PUBLIC_URL || '',
   autoReply:(client,event,value,queue)=>require('./lib/reply-templates').autoReply(path.join(privateDirectory,'crm'),client,event,value,queue),
+  semanticReply:(client,text,queue,isCurrent)=>require('./lib/reply-templates').semanticReply(path.join(privateDirectory,'crm'),client,text,queue,isCurrent),
   externalFileSender:(client,attachment,bytes)=>client.transport==='chatwoot'
     ?chatwootBridge.sendFile(client,attachment,bytes):metaInbox.sendFile(client,attachment,bytes),
   externalFileAllowed:metaInbox.acceptsFile,

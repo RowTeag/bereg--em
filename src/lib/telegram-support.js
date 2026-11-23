@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { translateMessage, detectMessageLanguage } = require('./message-translation');
 const { languages, languageCodes } = require('./languages');
 
-function createSupport({ directory, tokens = {}, api: customApi, externalSender, externalFileSender, autoReply, workerMode = false, webhookSecret = '', webhookBaseUrl = '' }) {
+function createSupport({ directory, tokens = {}, api: customApi, externalSender, externalFileSender, autoReply, semanticReply, workerMode = false, webhookSecret = '', webhookBaseUrl = '' }) {
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   const files=require('./dialog-files').createDialogFiles(directory,tokens.client);
   const file = path.join(directory, 'support.json');
@@ -147,8 +147,9 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
       client.history.push(historyItem);
       state.queue.push({ bot:'operator', clientId:id, text, incomingId:m.message_id });
       if(client.history.filter(h=>h.direction==='in').length===1)autoReply?.(client,'first','',state.queue);
-      autoReply?.(client,'phrase',text,state.queue);
+      const matched = autoReply?.(client,'phrase',text,state.queue);
       save();
+      if (!matched && (!media || m.caption)) await matchInboxTemplate(client, text);
       await send(bot,id,client.operatorId?tr(language,'sent'):tr(language,'queued'),{reply_markup:clientMenuFor(language)});
       return;
     }
@@ -202,7 +203,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     client.history.push({ direction:'out', text, operatorId:operator.id, at:new Date().toISOString() });
     state.queue.push({ bot:client.transport==='chatwoot'||client.provider&&client.provider!=='telegram'?'external':'client',clientId,text,operatorChatId:id,sourceLanguage:language }); save();
   }
-  function ingestExternal({provider,attachments=[],attachment,transport,externalId,name,contact,sourceUrl,text,sourceId,demo=false,language}) {
+  async function ingestExternal({provider,attachments=[],attachment,transport,externalId,name,contact,sourceUrl,text,sourceId,demo=false,language}) {
     if(!(transport==='chatwoot'?['facebook','whatsapp','instagram','email','viber','chatwoot','telegram']:transport==='viber'?['viber']:['facebook','whatsapp']).includes(provider))throw new Error('Неизвестный канал обращения.');
     const legacyId=`ext:${provider}:${externalId}`;
     const id=state.clients[legacyId]?.transport===transport||(!state.clients[legacyId]&&transport!=='chatwoot')?legacyId:
@@ -214,8 +215,22 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     client.history.push({direction:'in',sourceId,attachments,attachment:attachment || undefined,text:String(text).slice(0,3500),translations:{},at:new Date().toISOString(),provider});
     state.queue.push({bot:'operator',clientId:id,text:String(text).slice(0,3500),incomingId:sourceId});
     if(client.history.filter(h=>h.direction==='in').length===1)autoReply?.(client,'first','',state.queue);
-    autoReply?.(client,'phrase',text,state.queue);save();
+    const matched = autoReply?.(client,'phrase',text,state.queue);
+    save();
+    if (!matched) await matchInboxTemplate(client, text);
     flush().catch(()=>{});return client;
+  }
+  async function matchInboxTemplate(client, text) {
+    if (!semanticReply) return;
+    const latest = client.history.at(-1);
+    const language = client.language;
+    const stillCurrent = () => client.history.at(-1) === latest &&
+      client.language === language && client.status !== 'closed';
+    try {
+      if (await semanticReply(client, text, state.queue, stillCurrent)) save();
+    } catch (error) {
+      console.error('Inbox template selection failed:', error.message);
+    }
   }
   function setClientLanguage(provider,externalId,language){
     if(!['facebook','whatsapp'].includes(provider)||!languageCodes.includes(language))return;
@@ -296,16 +311,16 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
           // The operator's selected UI language is not necessarily the
           // language they typed. Detect the reply text; let the translator
           // auto-detect when the text is too short or ambiguous.
-          const sourceLanguage=await detectMessageLanguage(item.text);
-          const translated=await translateMessage(item.text,client.language||'en',sourceLanguage);
+          const sourceLanguage=item.literalTemplate ? client.language || 'en' : await detectMessageLanguage(item.text);
+          const translated=item.literalTemplate ? item.text : await translateMessage(item.text,client.language||'en',sourceLanguage);
           const outgoing=[...client.history].reverse().find(message=>message.direction==='out'&&message.text===item.text&&(!message.translations?.[client.language||'en']||(sourceLanguage!==(client.language||'en')&&message.translations?.[client.language||'en']===item.text)));
           if(outgoing){outgoing.translations||={};outgoing.translations[client.language||'en']=translated;save();}
           await externalSender(client,translated);
         } else {
           // Never use the employee's locale as the source language of a
           // reply. The customer-selected locale remains the target.
-          const sourceLanguage=await detectMessageLanguage(item.text);
-          const translated=await translateMessage(item.text,client.language||'en',sourceLanguage);
+          const sourceLanguage=item.literalTemplate ? client.language || 'en' : await detectMessageLanguage(item.text);
+          const translated=item.literalTemplate ? item.text : await translateMessage(item.text,client.language||'en',sourceLanguage);
           const outgoing=[...client.history].reverse().find(message=>message.direction==='out'&&message.text===item.text&&(!message.translations?.[client.language||'en']||(sourceLanguage!==(client.language||'en')&&message.translations?.[client.language||'en']===item.text)));
           if(outgoing){outgoing.translations||={};outgoing.translations[client.language||'en']=translated;save();}
           await send('client',client.id,translated);

@@ -80,7 +80,7 @@ test('external Facebook and WhatsApp clients are labelled and replies use the ex
  const update=(id,text,reply)=>({message:{message_id:++messageId,chat:{id,type:'private'},from:{first_name:'Operator'},text,reply_to_message:reply?{message_id:reply}:undefined}});
  try{
   const operator=service.addOperator('Anna');await service.handle('operator',update(100,`/login ${operator.password}`));
-  const client=service.ingestExternal({provider:'whatsapp',externalId:'361234567',name:'Olga',contact:'+361234567',sourceUrl:'https://wa.me/361234567',text:'Нужен переводчик',sourceId:'wamid.1'});
+  const client=await service.ingestExternal({provider:'whatsapp',externalId:'361234567',name:'Olga',contact:'+361234567',sourceUrl:'https://wa.me/361234567',text:'Нужен переводчик',sourceId:'wamid.1'});
   assert.equal(client.provider,'whatsapp');await service.flush();
   const replyId=Number(Object.keys(service.state.replies).find(key=>key.startsWith('100:')).split(':')[1]);
   await service.handle('operator',update(100,'Поможем',replyId));await service.flush();
