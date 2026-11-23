@@ -1,7 +1,9 @@
 (()=>{
-  const formatDate=value=>value.toLocaleDateString('ru-RU');
+  const formatDate=value=>value.toLocaleDateString(document.documentElement.lang);
+  const ukrainian=()=>window.crmLanguage()==='uk';
   const tests={
     inbox(){
+      if(ukrainian())return 'Telegram · Клієнт: Які документи потрібні? Відповідь: Надішліть скан документа.';
       const dialog={provider:'Telegram',history:[]};
       dialog.history.push({incoming:true,text:'Какие документы нужны?'});
       dialog.history.push({incoming:false,text:'Пришлите скан документа.'});
@@ -9,14 +11,17 @@
     },
     documents(){
       const expiry=new Date();expiry.setDate(expiry.getDate()+30);
+      if(ukrainian())return 'Приклад: довідка.pdf · дійсна до '+formatDate(expiry)+' · до завершення строку дії менше трьох місяців.';
       return 'Пример: справка.pdf · действительна до '+formatDate(expiry)+' · до окончания менее трёх месяцев.';
     },
     payments(){
+      if(ukrainian())return 'Переклад · 5000 HUF (готівка) + 3000 HUF (безготівкова оплата) = 8000 HUF.';
       const entries=[{method:'наличные',amount:5000},{method:'безналичные',amount:3000}];
       return 'Перевод · '+entries.map(p=>p.amount+' HUF ('+p.method+')').join(' + ')+' = '+entries.reduce((sum,p)=>sum+p.amount,0)+' HUF.';
     },
     deadlines(){
       const due=new Date(),remind=new Date();due.setDate(due.getDate()+7);remind.setDate(remind.getDate()+5);
+      if(ukrainian())return 'Приклад запиту: надішліть скан до '+formatDate(due)+'. Дата нагадування: '+formatDate(remind)+'.';
       return 'Пример запроса: пришлите скан до '+formatDate(due)+'. Дата напоминания: '+formatDate(remind)+'.';
     }
   };

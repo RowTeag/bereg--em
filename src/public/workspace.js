@@ -8,7 +8,7 @@
   window.__beregAuth={user,csrf};
   document.body.dataset.role=user.role;
   const loadModule=src=>new Promise((resolve,reject)=>{const script=document.createElement('script'),timer=setTimeout(()=>{script.remove();reject(new Error('Timed out loading '+src));},7000);script.src=src;script.onload=()=>{clearTimeout(timer);resolve();};script.onerror=()=>{clearTimeout(timer);reject(new Error('Could not load '+src));};document.body.append(script);});
-  const modules=user.role==='operator'?['/app.js?v=40']:['/app.js?v=40','/business.js?v=7'];
+  const modules=user.role==='operator'?['/app.js?v=41']:['/app.js?v=41','/business.js?v=7'];
   const $=id=>document.getElementById(id),roles={superadmin:'Суперадминистратор',admin:'Администратор',operator:'Оператор'};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeExternalUrl=value=>{try{const url=new URL(String(value||''));return ['https:','http:'].includes(url.protocol)?url.href:'';}catch{return '';}};
@@ -84,6 +84,10 @@
   $('clientFilters').onsubmit=e=>e.preventDefault();
   $('clientFilters').onreset=()=>setTimeout(renderCrm,0);
   $('clientFilters').elements.history.onchange=()=>refreshCasework().then(renderCrm).catch(e=>{$('crmStatus').textContent=e.message;});
+  $('showFilteredClients').onclick=()=>{
+    navigate('clients');
+    $('clients').scrollIntoView({block:'start'});
+  };
   $('campaignForm').onsubmit=async event=>{
     event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');
     const ids=[...visibleClientIds],text=form.elements.message.value.trim();
@@ -100,22 +104,47 @@
   function drawBookings(){
     const box=$('reservioBookings');box.replaceChildren();
     const entries=new Map([...(caseData.bookings||[]),...(caseData.syncedBookings||[])].map(b=>[b.id,b]));
-    if(caseData.calendarError||caseData.calendarSync)$('reservioStatus').textContent=caseData.calendarError||'Синхронизировано: '+new Date(caseData.calendarSync).toLocaleString();
+    if(caseData.calendarError||caseData.calendarSync){
+      $('reservioStatus').textContent=caseData.calendarError||'';
+      if(!caseData.calendarError) appendStatus('reservioStatus','Синхронизировано',new Date(caseData.calendarSync).toLocaleString());
+    }
     for(const event of [...entries.values()].sort((a,b)=>a.start.localeCompare(b.start))){
       const line=document.createElement('p');
-      line.textContent=[event.start,event.zone,event.title,event.status,event.recurring?'Повторяющееся событие':''].filter(Boolean).join(' · ');
+      line.textContent=[event.start,event.zone,event.title,event.status].filter(Boolean).join(' · ');
+      if(event.recurring){const label=document.createElement('span');label.textContent='Повторяющееся событие';line.append(' · ',label);}
       box.append(line);
     }
     if(!box.childElementCount)box.textContent='Записи ещё не импортированы.';
   }
   $('reservioCalendar').ontoggle=()=>{if($('reservioCalendar').open)refreshCasework().catch(e=>{$('reservioStatus').textContent=e.message;});};
-  $('reservioImport').onsubmit=async event=>{
-    event.preventDefault();
-    try{const file=event.currentTarget.querySelector('input').files[0];if(file.size>2000000)throw Error('Лимит 2 МБ.');
-      const result=await post('/api/casework/reservio/import',{ics:await file.text()});
-      await refreshCasework();$('reservioStatus').textContent='Обработано записей: '+result.count;
-    }catch(error){$('reservioStatus').textContent=error.message;}
-  };
+  function appendStatus(id, label, value){
+    const span=document.createElement('span');
+    span.textContent=label;
+    $(id).replaceChildren(span, ': ', String(value));
+  }
+  function handleReservioImport(id, importRecords){
+    $(id).onsubmit=async event=>{
+      event.preventDefault();
+      const form=event.currentTarget,button=form.querySelector('button');
+      button.disabled=true;
+      $('reservioStatus').textContent='Импорт записей…';
+      try{
+        const result=await importRecords(form);
+        form.reset();
+        await refreshCasework();
+        appendStatus('reservioStatus','Обработано записей',result.count);
+      }catch(error){$('reservioStatus').textContent=error.message;}
+      finally{button.disabled=false;}
+    };
+  }
+  handleReservioImport('reservioImport',async form=>{
+    const file=form.elements.file.files[0];
+    if(!file || !/\.(csv|ics)$/i.test(file.name))throw Error('Выберите файл ICS или CSV.');
+    if(file.size>2000000)throw Error('Выберите файл календаря до 2 МБ.');
+    const format=file.name.toLowerCase().endsWith('.csv')?'csv':'ics';
+    return post('/api/casework/reservio/import',{[format]:await file.text()});
+  });
+  handleReservioImport('reservioLinkImport',form=>post('/api/casework/reservio/import-link',{url:form.elements.url.value.trim()}));
   function drawCasework(){
     const client=crmRecords.find(c=>c.id===crmId);
     $('casework').hidden=!client;

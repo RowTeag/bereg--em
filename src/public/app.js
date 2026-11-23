@@ -76,7 +76,7 @@ function safeExternalUrl(value) {
 }
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleString('ru-RU', {
+  return new Date(iso).toLocaleString(document.documentElement.lang, {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -847,7 +847,7 @@ settingsForm.addEventListener('submit', async event => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Не удалось сохранить настройки');
     applySettings(data.settings);
-    saveStatus.textContent = `Сохранено в ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+    saveStatus.replaceChildren(metaLabel('Сохранено в'), ' ', new Date().toLocaleTimeString(document.documentElement.lang, { hour: '2-digit', minute: '2-digit' }));
     saveStatus.className = 'saved';
   } catch (error) {
     saveStatus.textContent = error.message;
@@ -1185,15 +1185,33 @@ async function loadMetaInbox(){
   document.getElementById('metaWebhookUrl').value=data.webhookUrl||'';document.getElementById('metaVerifyToken').value=data.verifyToken||'';
   const form=document.getElementById('whatsappConnectForm');form.elements.phoneNumberId.value=data.whatsapp.phoneNumberId||'';form.elements.businessAccountId.value=data.whatsapp.businessAccountId||'';form.elements.displayPhoneNumber.value=data.whatsapp.displayPhoneNumber||'';
   const publicBox=document.getElementById('whatsappPublicLink'),publicOpen=document.getElementById('whatsappPublicOpen');publicBox.hidden=!data.whatsapp.publicUrl;publicOpen.href=data.whatsapp.publicUrl||'#';document.getElementById('whatsappPublicNumber').textContent=data.whatsapp.displayPhoneNumber||'';publicBox.dataset.url=data.whatsapp.publicUrl||'';
-  document.getElementById('metaInboxState').textContent=`Messenger: ${data.facebook.connected?'подключён':'не подключён'} · WhatsApp: ${data.whatsapp.connected?'подключён':'не подключён'}`;
+  const connected = channel => metaLabel(channel.connected ? 'Подключён' : 'Не подключён');
+  document.getElementById('metaInboxState').replaceChildren('Messenger: ', connected(data.facebook), ' · WhatsApp: ', connected(data.whatsapp));
 }
-function metaTime(value){return value?formatDate(value):'ещё не было';}
+function metaLabel(text){
+  const label=document.createElement('span');
+  label.textContent=text;
+  return label;
+}
+function metaTime(value){return value?formatDate(value):metaLabel('Ещё не было');}
+function metaDiagnostic(channel, state, activity, detail){
+  const line=document.createElement('span');
+  line.append(channel+': ', metaLabel(state));
+  if(detail)line.append(' ', detail);
+  line.append(' · ', metaLabel('Последнее входящее'), ': ', metaTime(activity?.lastInboundAt));
+  return line;
+}
 async function checkMetaChannels(){
   const response=await fetch('/api/meta-inbox/diagnostics');const data=await response.json();if(!response.ok)throw new Error(data.error||'Не удалось проверить каналы.');
   const wa=data.whatsapp||{},fb=data.facebook||{};
-  const waState=!wa.configured?'не настроен':!wa.api?`ошибка API: ${wa.error||'проверьте токен'}`:wa.webhookSubscribed?'API и webhook подключены':'API работает, webhook нужно подписать';
-  const fbState=!fb.configured?'не подключён':!fb.api?`ошибка API: ${fb.error||'проверьте доступ'}`:fb.subscribedFields?.includes('messages')?'Page API и поле messages подключены':'подпишите Page на messages';
-  document.getElementById('metaDiagnostics').textContent=`WhatsApp: ${waState}. Последнее входящее: ${metaTime(wa.activity?.lastInboundAt)}. Messenger: ${fbState}. Последнее входящее: ${metaTime(fb.activity?.lastInboundAt)}.`;
+  const waState=!wa.configured?'Не настроен. Заполните данные WhatsApp в настройках канала.':!wa.api?'Ошибка API WhatsApp.':wa.webhookSubscribed?'API и webhook подключены.':'API работает. Подключите webhook WhatsApp.';
+  const missingPagePermission=fb.error?.includes('pages_manage_metadata');
+  const fbState=!fb.configured?'Не подключён.':missingPagePermission?'Meta не предоставила разрешение pages_manage_metadata. Переподключите страницу Facebook через настройки и подтвердите разрешения.':!fb.api?'Ошибка API Messenger.':fb.subscribedFields?.includes('messages')?'Подписка Messenger на входящие сообщения активна.':'Подключите Messenger, чтобы получать входящие сообщения.';
+  document.getElementById('metaDiagnostics').replaceChildren(
+    metaDiagnostic('WhatsApp', waState, wa.activity, wa.configured&&!wa.api?wa.error:''),
+    document.createElement('br'),
+    metaDiagnostic('Messenger', fbState, fb.activity, !missingPagePermission&&fb.configured&&!fb.api?fb.error:'')
+  );
   return data;
 }
 async function loadChatwoot(){
@@ -1202,12 +1220,17 @@ async function loadChatwoot(){
   const form=document.getElementById('chatwootConnectForm');form.elements.accountId.value=data.accountId||'';form.elements.inboxId.value=data.inboxId||'';form.elements.apiToken.value='';form.elements.webhookSecret.value='';
   form.elements.apiToken.placeholder=data.apiTokenConfigured?'Токен сохранён · оставьте пустым, чтобы не менять':'API token из профиля Chatwoot';
   form.elements.webhookSecret.placeholder=data.webhookSecretConfigured?'Секрет сохранён · оставьте пустым, чтобы не менять':'Секрет подписи webhook';
-  document.getElementById('chatwootStatus').textContent=data.configured?`Chatwoot подключён. Последнее сообщение: ${metaTime(data.activity?.lastInboundAt)}.`:'Подключите Facebook Page в Chatwoot и сохраните реквизиты моста.';
+  const status=document.getElementById('chatwootStatus');
+  if(data.configured)status.replaceChildren(metaLabel('Chatwoot подключён.'), ' ', metaLabel('Последнее сообщение'), ': ', metaTime(data.activity?.lastInboundAt));
+  else status.textContent='Подключите страницу Facebook в Chatwoot и сохраните настройки подключения.';
 }
 async function checkChatwoot(){
   const response=await fetch('/api/chatwoot/diagnostics');const data=await response.json();if(!response.ok)throw new Error(data.error);
   const selected=data.inboxes?.find(item=>item.id===document.getElementById('chatwootConnectForm').elements.inboxId.value);
-  document.getElementById('chatwootStatus').textContent=!data.configured?'Chatwoot настроен не полностью.':data.api?`Chatwoot API работает${selected?` · Facebook inbox: ${selected.name}`:''}. Последнее входящее: ${metaTime(data.activity?.lastInboundAt)}.`:`Ошибка Chatwoot API: ${data.error||'проверьте токен'}`;
+  const status=document.getElementById('chatwootStatus');
+  if(!data.configured)status.textContent='Chatwoot настроен не полностью.';
+  else if(data.api)status.replaceChildren(metaLabel('Chatwoot API работает'), selected?` · Facebook: ${selected.name}`:'', ' · ', metaLabel('Последнее входящее'), ': ', metaTime(data.activity?.lastInboundAt));
+  else status.replaceChildren(metaLabel('Ошибка Chatwoot API'), ': ', data.error||metaLabel('Проверьте токен'));
 }
 document.querySelectorAll('[data-copy-field]').forEach(button=>button.onclick=async()=>{const field=document.getElementById(button.dataset.copyField);try{await navigator.clipboard.writeText(field.value);button.textContent='Скопировано';setTimeout(()=>button.textContent='Копировать',1200);}catch{field.select();}});
 document.getElementById('whatsappPublicCopy').onclick=async event=>{const button=event.currentTarget,url=document.getElementById('whatsappPublicLink').dataset.url;if(!url)return;try{await navigator.clipboard.writeText(url);button.textContent='Ссылка скопирована';setTimeout(()=>button.textContent='Копировать ссылку',1400);}catch{document.getElementById('metaInboxMessage').textContent=url;}};
