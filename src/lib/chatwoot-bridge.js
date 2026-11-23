@@ -11,7 +11,7 @@ function createChatwootBridge({directory,env=process.env,fetchImpl=fetch}){
   const save=()=>{fs.writeFileSync(file+'.tmp',JSON.stringify(config,null,2),{mode:0o600});fs.renameSync(file+'.tmp',file);};
   if(!fs.existsSync(file))save();
   let ingest=async()=>{};
-  const panelBaseUrl=String(env.APP_BASE_URL||env.RAILWAY_PUBLIC_DOMAIN&&`https://${env.RAILWAY_PUBLIC_DOMAIN}`||'').replace(/\/$/,'');
+  const panelBaseUrl=String(env.APP_BASE_URL||env.RAILWAY_PUBLIC_DOMAIN&&`https://${env.RAILWAY_PUBLIC_DOMAIN}`||env.BEREG_PUBLIC_URL||'').replace(/\/$/,'');
   const cleanBase=value=>{const url=new URL(String(value||'https://app.chatwoot.com'));if(url.protocol!=='https:')throw new Error('Chatwoot должен использовать HTTPS.');return url.origin;};
   const configured=()=>Boolean(config.accountId&&config.apiToken&&config.webhookSecret);
   async function api(endpoint,{method='GET',body}={}){
@@ -43,11 +43,11 @@ function createChatwootBridge({directory,env=process.env,fetchImpl=fetch}){
     const text=String(payload.content||payload.processed_message_content||attachments.map(a=>a.name).join(', ')).trim();if(!text)return;
     const sender=payload.sender||payload.conversation?.meta?.sender||{};
     const channel=String(payload.conversation?.channel||payload.inbox?.channel_type||'').replace(/^Channel::/i,'').toLowerCase();
-    const provider=({facebookpage:'facebook',facebook:'facebook',whatsapp:'whatsapp',instagram:'instagram',email:'email',telegram:'telegram',line:'chatwoot',api:'chatwoot',viber:'viber'})[channel]||(channel?'chatwoot':config.inboxId?'facebook':'chatwoot');
+    const provider=({facebookpage:'facebook',facebook:'facebook',whatsapp:'whatsapp',instagram:'instagram',email:'email',tiktok:'tiktok',telegram:'telegram',line:'chatwoot',api:'chatwoot',viber:'viber'})[channel]||(channel?'chatwoot':config.inboxId?'facebook':'chatwoot');
     const name=sender.name||sender.available_name||'Клиент';
     const contact=sender.identifier||sender.email||sender.phone_number||provider;
-    config.activity={lastInboundAt:new Date().toISOString(),lastConversationId:conversationId};save();
     await ingest({provider,attachments,transport:'chatwoot',externalId:conversationId,name,contact,sourceUrl:`${cleanBase(config.baseUrl)}/app/accounts/${encodeURIComponent(config.accountId)}/conversations/${encodeURIComponent(conversationId)}`,text,sourceId:String(payload.id||payload.source_id||'')});
+    config.activity={...config.activity,lastInboundAt:new Date().toISOString(),lastConversationId:conversationId};save();
   }
   async function sendMessage(client,text){
     const conversationId=String(client.externalId||'');if(!/^\d+$/.test(conversationId))throw new Error('Некорректный диалог Chatwoot.');

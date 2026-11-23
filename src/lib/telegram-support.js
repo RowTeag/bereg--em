@@ -216,16 +216,19 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     state.queue.push({ bot:client.transport==='chatwoot'||client.provider&&client.provider!=='telegram'?'external':'client',clientId,text,operatorChatId:id,sourceLanguage:language }); save();
   }
   async function ingestExternal({provider,attachments=[],attachment,transport,externalId,name,contact,sourceUrl,text,sourceId,demo=false,language}) {
-    if(!(transport==='chatwoot'?['facebook','whatsapp','instagram','email','viber','chatwoot','telegram']:transport==='viber'?['viber']:['facebook','whatsapp']).includes(provider))throw new Error('Неизвестный канал обращения.');
+    if(!(transport==='chatwoot'?['facebook','whatsapp','instagram','email','tiktok','viber','chatwoot','telegram']:transport==='viber'?['viber']:['facebook','whatsapp']).includes(provider))throw new Error('Неизвестный канал обращения.');
     const legacyId=`ext:${provider}:${externalId}`;
     const id=state.clients[legacyId]?.transport===transport||(!state.clients[legacyId]&&transport!=='chatwoot')?legacyId:
       transport==='chatwoot'?`cw:${provider}:${externalId}`:legacyId;
-    const client=state.clients[id]||={id,externalId:String(externalId),provider,transport:transport||'meta',name:name||`Клиент ${provider}`,contact:contact||'',sourceUrl:sourceUrl||'',status:'new',operatorId:null,language:language||null,history:[]};
+    const genericId=`cw:chatwoot:${externalId}`;
+    const conversationId=transport==='chatwoot' && provider==='tiktok' && state.clients[genericId]?.transport==='chatwoot' ? genericId : id;
+    const client=state.clients[conversationId]||={id:conversationId,externalId:String(externalId),provider,transport:transport||'meta',name:name||`Клиент ${provider}`,contact:contact||'',sourceUrl:sourceUrl||'',status:'new',operatorId:null,language:language||null,history:[]};
+    if (provider==='tiktok') client.provider=provider;
     client.name=name||client.name;client.contact=contact||client.contact;client.sourceUrl=sourceUrl||client.sourceUrl;client.externalId=String(externalId);client.transport=transport||client.transport||'meta';client.language=language||client.language||null;client.demo=Boolean(demo);
     if(client.history.some(item=>item.sourceId===sourceId&&sourceId))return client;
     if(client.status==='closed')client.status='new';assign(client);
     client.history.push({direction:'in',sourceId,attachments,attachment:attachment || undefined,text:String(text).slice(0,3500),translations:{},at:new Date().toISOString(),provider});
-    state.queue.push({bot:'operator',clientId:id,text:String(text).slice(0,3500),incomingId:sourceId});
+    state.queue.push({bot:'operator',clientId:conversationId,text:String(text).slice(0,3500),incomingId:sourceId});
     if(client.history.filter(h=>h.direction==='in').length===1)autoReply?.(client,'first','',state.queue);
     const matched = autoReply?.(client,'phrase',text,state.queue);
     save();

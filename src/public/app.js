@@ -1223,14 +1223,19 @@ async function loadChatwoot(){
   form.elements.webhookSecret.placeholder=data.webhookSecretConfigured?'Секрет сохранён · оставьте пустым, чтобы не менять':'Секрет подписи webhook';
   const status=document.getElementById('chatwootStatus');
   if(data.configured)status.replaceChildren(metaLabel('Chatwoot подключён.'), ' ', metaLabel('Последнее сообщение'), ': ', metaTime(data.activity?.lastInboundAt));
-  else status.textContent='Подключите страницу Facebook в Chatwoot и сохраните настройки подключения.';
+  else status.textContent='Підключіть потрібні канали в Chatwoot і збережіть налаштування.';
 }
 async function checkChatwoot(){
   const response=await fetch('/api/chatwoot/diagnostics');const data=await response.json();if(!response.ok)throw new Error(data.error);
-  const selected=data.inboxes?.find(item=>item.id===document.getElementById('chatwootConnectForm').elements.inboxId.value);
+  const inboxId=document.getElementById('chatwootConnectForm').elements.inboxId.value;
+  const selected=data.inboxes?.find(item=>item.id===inboxId);
   const status=document.getElementById('chatwootStatus');
   if(!data.configured)status.textContent='Chatwoot настроен не полностью.';
-  else if(data.api)status.replaceChildren(metaLabel('Chatwoot API работает'), selected?` · Facebook: ${selected.name}`:'', ' · ', metaLabel('Последнее входящее'), ': ', metaTime(data.activity?.lastInboundAt));
+  else if(data.api && inboxId && !selected)status.textContent='Вказаний Inbox ID відсутній серед доступних каналів Chatwoot.';
+  else if(data.api){
+    const names=(selected?[selected]:data.inboxes||[]).map(item=>item.name||item.channelType).filter(Boolean);
+    status.replaceChildren(metaLabel('Chatwoot API работает'), names.length?` · ${names.join(', ')}`:' · Немає доступних каналів', ' · ', metaLabel('Последнее входящее'), ': ', metaTime(data.activity?.lastInboundAt));
+  }
   else status.replaceChildren(metaLabel('Ошибка Chatwoot API'), ': ', data.error||metaLabel('Проверьте токен'));
 }
 document.querySelectorAll('[data-copy-field]').forEach(button=>button.onclick=async()=>{const field=document.getElementById(button.dataset.copyField);try{await navigator.clipboard.writeText(field.value);button.textContent='Скопировано';setTimeout(()=>button.textContent='Копировать',1200);}catch{field.select();}});

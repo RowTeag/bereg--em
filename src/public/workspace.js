@@ -8,7 +8,7 @@
   window.__beregAuth={user,csrf};
   document.body.dataset.role=user.role;
   const loadModule=src=>new Promise((resolve,reject)=>{const script=document.createElement('script'),timer=setTimeout(()=>{script.remove();reject(new Error('Timed out loading '+src));},7000);script.src=src;script.onload=()=>{clearTimeout(timer);resolve();};script.onerror=()=>{clearTimeout(timer);reject(new Error('Could not load '+src));};document.body.append(script);});
-  const modules=user.role==='operator'?['/app.js?v=44']:['/app.js?v=44','/business.js?v=7'];
+  const modules=user.role==='operator'?['/app.js?v=45']:['/app.js?v=45','/business.js?v=7'];
   const $=id=>document.getElementById(id),roles={superadmin:'Суперадминистратор',admin:'Администратор',operator:'Оператор'};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeExternalUrl=value=>{try{const url=new URL(String(value||''));return ['https:','http:'].includes(url.protocol)?url.href:'';}catch{return '';}};
@@ -468,7 +468,7 @@
     }
     const fresh=[];if(inboxNotificationCursor!==null)for(const item of result.messages||[]){const key=`${item.client.id}:${item.message.sourceId??item.message.at??item.message.text}`;if(seenInboundMessages.has(key))continue;seenInboundMessages.add(key);fresh.push(item);}inboxNotificationCursor=Number(result.cursor)||Date.now();if(seenInboundMessages.size>5000){const latest=[...seenInboundMessages].slice(-2500);seenInboundMessages.clear();latest.forEach(key=>seenInboundMessages.add(key));}announceNewInboxMessages(fresh);if(fresh.length&&$('inbox').classList.contains('active')&&!$('inboxReply').value)await loadInbox();}catch{}finally{pollingInboxNotifications=false;}}
   const stateLabel=s=>({new:'Новое',in_progress:'В работе',closed:'Закрыто'})[s]||s;
-  const providerName=c=>({telegram:'Telegram',facebook:'Facebook',whatsapp:'WhatsApp',instagram:'Instagram',email:'Email',chatwoot:'Chatwoot',viber:'Viber'})[c.provider||'telegram']||c.provider;
+  const providerName=c=>({telegram:'Telegram',facebook:'Facebook',whatsapp:'WhatsApp',instagram:'Instagram',email:'Email',tiktok:'TikTok',chatwoot:'Chatwoot',viber:'Viber'})[c.provider||'telegram']||c.provider;
   const languageNames={en:'English',ru:'Русский',uk:'Українська',hu:'Magyar',vi:'Tiếng Việt',de:'Deutsch',es:'Español',fr:'Français',it:'Italiano',pl:'Polski',ro:'Română',tr:'Türkçe',ar:'العربية',zh:'中文',ja:'日本語',ko:'한국어',pt:'Português',nl:'Nederlands',cs:'Čeština',sk:'Slovenčina',bg:'Български',el:'Ελληνικά',sr:'Српски',hr:'Hrvatski',da:'Dansk',fi:'Suomi',sv:'Svenska',no:'Norsk',hi:'हिन्दी',id:'Bahasa Indonesia',th:'ไทย',fa:'فارسی',he:'עברית',ca:'Català'};
   const supportedReplyLanguages=Object.keys(languageNames);
   const crmClientLanguage=document.querySelector('#crmForm [name="language"]');
