@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
   <link rel="stylesheet" href="/crm-tests.css">
-    <link rel="stylesheet" href="/crm-layout.css?v=1" />
+    <link rel="stylesheet" href="/crm-layout.css?v=2" />
 
 </head>
   <body class="auth-loading feature-loading">
@@ -80,7 +80,7 @@
             <p class="eyebrow">BEREG OUTSOURCE GROUP / WORKSPACE</p>
             <h1 id="pageTitle">Панель управления</h1>
           </div>
-          <label class="language-picker"><span>Language</span><select id="crmLanguage" aria-label="CRM language"><option value="en">English</option><option value="ru">Русский</option><option value="uk">Українська</option><option value="vi">Tiếng Việt</option></select></label>
+          <label class="language-picker"><span>Language</span><select id="crmLanguage" aria-label="CRM language"><option value="uk">Українська</option><option value="en">English</option><option value="vi">Tiếng Việt</option></select></label>
           <div class="topbar-actions">
             <button id="exportBtn" class="ghost-btn" type="button">Экспорт</button>
             <button id="newPostBtn" class="primary-btn" type="button">+ Новый пост</button>
@@ -183,10 +183,10 @@
           </div>
 
           <div class="content-grid">
-            <div class="composer card">
+            <div class="composer card" id="facebookComposer">
               <div class="card-header">
                 <h3>Опубликовать в Facebook</h3>
-                <span id="facebookConnection" class="chip light">Проверка Facebook…</span>
+                <span id="facebookConnection" class="chip light" role="status">Проверка Facebook…</span>
               </div>
 
               <form id="postForm" enctype="multipart/form-data">
@@ -198,12 +198,17 @@
                 <div class="ai-box">
                   <div class="ai-heading">
                     <label for="aiPrompt">ChatGPT-генератор поста</label>
-                    <span id="aiConnection" class="ai-connection">Проверка подключения…</span>
+                    <span id="aiConnection" class="ai-connection" role="status">Проверка подключения…</span>
                   </div>
                   <textarea id="aiPrompt" rows="3" placeholder="Например: сопровождение клиента при открытии банковского счёта в Венгрии"></textarea>
-                  <label for="aiPostLanguage">Язык маркетингового поста</label>
-                  <select id="aiPostLanguage"><option value="ru">Русский</option><option value="uk">Українська</option><option value="en">English</option><option value="hu">Magyar</option><option value="vi">Tiếng Việt</option></select>
-                  <div class="ai-options">
+                  <div class="ai-options publication-language">
+                    <label for="aiPostLanguage">Язык маркетингового поста
+                      <select id="aiPostLanguage"><option value="uk" selected>Українська</option><option value="en">English</option><option value="hu">Magyar</option><option value="vi">Tiếng Việt</option><option value="ru">Русский</option></select>
+                    </label>
+                  </div>
+                  <details class="ai-settings">
+                    <summary>Параметры генерации</summary>
+                    <div class="ai-options">
                     <label>Цель поста
                       <select id="aiGoal">
                         <option value="leads">Получить заявки</option><option value="trust">Укрепить доверие</option><option value="educate">Объяснить процедуру</option><option value="awareness">Рассказать об услуге</option>
@@ -229,7 +234,8 @@
                         <option value="short">Короткий</option><option value="medium" selected>Средний</option><option value="long">Длинный</option>
                       </select>
                     </label>
-                  </div>
+                    </div>
+                  </details>
                   <div class="ai-actions">
                     <button type="button" id="generateAiBtn" class="secondary-btn">Сгенерировать через ChatGPT</button>
                   </div>
@@ -243,6 +249,7 @@
                   </div>
                 </div>
 
+                <label class="publication-draft-label" for="postContent">Текст публикации</label>
                 <textarea id="postContent" name="content" placeholder="Напишите пост для страницы Facebook..." rows="6"></textarea>
 
                 <input id="generatedImagePath" type="hidden" name="generatedImagePath" />
@@ -263,7 +270,7 @@
                 <div class="composer-footer">
                   <div class="meta">
                     <span class="dot"></span>
-                    <span id="statusText">Проверяю подключение Facebook…</span>
+                    <span id="statusText" role="status">Проверяю подключение Facebook…</span>
                   </div>
                   <button type="submit" class="primary-btn large">Опубликовать</button>
                 </div>
@@ -660,8 +667,8 @@
 
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
-    <script src="/crm-uk.js?v=1"></script><script src="/crm-i18n.js?v=8"></script>
-    <script src="/workspace.js?v=39"></script>
+    <script src="/crm-uk.js?v=2"></script><script src="/crm-i18n.js?v=9"></script>
+    <script src="/workspace.js?v=40"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {
