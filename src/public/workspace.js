@@ -544,7 +544,7 @@
     move.onclick=()=>{if(select.value)manage({operatorId:select.value});};
     field('Внутренний комментарий',note,add);
     field('Ответственный сотрудник',select,move);
-    if(!client.demo&&(client.transport==='chatwoot'||!client.provider||client.provider==='telegram')){
+    if(!client.demo&&(client.transport==='chatwoot'||!client.provider||['telegram','facebook','whatsapp'].includes(client.provider))){
       const file=document.createElement('input'),send=document.createElement('button');
       file.type='file';send.textContent='Отправить файл клиенту';
       send.onclick=async()=>{

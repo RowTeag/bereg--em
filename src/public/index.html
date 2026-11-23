@@ -192,7 +192,7 @@
     <button class="ghost-btn" type="button" id="editReplyTemplate">Редактировать выбранный</button>
     <button class="ghost-btn" type="reset">Новый шаблон</button>
     </div>
-    <label>Автоотправка <select name="event"><option value="">Только вручную</option><option value="first">При первом обращении</option><option value="phrase">При точной фразе клиента</option><option value="status">При изменении статуса дела</option></select></label>
+    <label>Автоотправка <select name="event"><option value="">Только вручную</option><option value="first">При первом обращении</option><option value="phrase">При точной фразе клиента</option><option value="status">При изменении статуса дела</option><option value="schedule">Запрос графика</option><option value="price">Запрос стоимости</option><option value="payment">Вопрос об оплате</option><option value="documents_ready">Вопрос о готовности документов</option></select></label>
 <label>Фраза клиента или новый статус <input name="match" maxlength="120"></label>
 <label>Название или тип запроса <input name="title" maxlength="120" required></label>
     <label>Ответ <textarea name="text" maxlength="3500" rows="3"></textarea></label>
@@ -717,8 +717,8 @@
 
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
-    <script src="/crm-uk.js?v=6"></script><script src="/crm-i18n.js?v=10"></script>
-    <script src="/workspace.js?v=48"></script>
+    <script src="/crm-uk.js?v=7"></script><script src="/crm-i18n.js?v=10"></script>
+    <script src="/workspace.js?v=49"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {

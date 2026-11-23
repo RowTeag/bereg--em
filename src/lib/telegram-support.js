@@ -202,7 +202,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     client.history.push({ direction:'out', text, operatorId:operator.id, at:new Date().toISOString() });
     state.queue.push({ bot:client.transport==='chatwoot'||client.provider&&client.provider!=='telegram'?'external':'client',clientId,text,operatorChatId:id,sourceLanguage:language }); save();
   }
-  function ingestExternal({provider,attachments=[],transport,externalId,name,contact,sourceUrl,text,sourceId,demo=false,language}) {
+  function ingestExternal({provider,attachments=[],attachment,transport,externalId,name,contact,sourceUrl,text,sourceId,demo=false,language}) {
     if(!(transport==='chatwoot'?['facebook','whatsapp','instagram','email','viber','chatwoot','telegram']:transport==='viber'?['viber']:['facebook','whatsapp']).includes(provider))throw new Error('Неизвестный канал обращения.');
     const legacyId=`ext:${provider}:${externalId}`;
     const id=state.clients[legacyId]?.transport===transport||(!state.clients[legacyId]&&transport!=='chatwoot')?legacyId:
@@ -211,7 +211,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     client.name=name||client.name;client.contact=contact||client.contact;client.sourceUrl=sourceUrl||client.sourceUrl;client.externalId=String(externalId);client.transport=transport||client.transport||'meta';client.language=language||client.language||null;client.demo=Boolean(demo);
     if(client.history.some(item=>item.sourceId===sourceId&&sourceId))return client;
     if(client.status==='closed')client.status='new';assign(client);
-    client.history.push({direction:'in',sourceId,attachments,text:String(text).slice(0,3500),translations:{},at:new Date().toISOString(),provider});
+    client.history.push({direction:'in',sourceId,attachments,attachment:attachment || undefined,text:String(text).slice(0,3500),translations:{},at:new Date().toISOString(),provider});
     state.queue.push({bot:'operator',clientId:id,text:String(text).slice(0,3500),incomingId:sourceId});
     if(client.history.filter(h=>h.direction==='in').length===1)autoReply?.(client,'first','',state.queue);
     autoReply?.(client,'phrase',text,state.queue);save();
@@ -268,7 +268,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
           record.delivery='accepted';state.queue.splice(state.queue.indexOf(item),1);save();continue;
         }
         if(item.attachment){
-          if(client.transport==='chatwoot')await externalFileSender(client,item.attachment,files.bytes(item.attachment.id));
+          if(client.transport==='chatwoot'||['facebook','whatsapp'].includes(client.provider))await externalFileSender(client,item.attachment,files.bytes(item.attachment.id));
           else await files.send(client.id,item.attachment);
           state.queue.splice(state.queue.indexOf(item),1);save();continue;
         }
@@ -517,9 +517,12 @@ function mountSupport(app, options) {
   app.post('/api/telegram/inbox/:id/files',(req,res)=>{
     const c=support.state.clients[req.params.id];
     if(!c||!canSee(req,c))return res.sendStatus(404);
-    if(c.demo||(c.transport!=='chatwoot'&&c.provider&&c.provider!=='telegram'))return res.status(400).json({error:'Канал не подключён для отправки файлов.'});
+    if(c.demo||(c.transport!=='chatwoot'&&c.provider&&!['telegram','facebook','whatsapp'].includes(c.provider)))return res.status(400).json({error:'Канал не подключён для отправки файлов.'});
     const {base64,name}=req.body;
     if(typeof base64!=='string'||base64.length>6990508||typeof name!=='string'||!name.trim())return res.status(400).json({error:'Проверьте файл (до 5 МБ).'});
+    if(c.transport !== 'chatwoot' && ['facebook','whatsapp'].includes(c.provider) && !options.externalFileAllowed?.(c,name)) {
+      return res.status(400).json({error:'Канал не підключено або формат файлу не підтримується.'});
+    }
     const bytes=Buffer.from(base64,'base64');
     if(!bytes.length||bytes.length>5242880||bytes.toString('base64')!==base64)return res.status(400).json({error:'Некорректный файл.'});
     const attachment=support.files.persist(bytes,name);

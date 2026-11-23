@@ -64,3 +64,65 @@ test('Meta inbox verifies and repairs the official WhatsApp webhook subscription
   const after=await inbox.subscribeWhatsapp();assert.equal(after.whatsapp.webhookSubscribed,true);assert(requests.some(item=>item.url.includes('/waba-1/subscribed_apps')&&item.method==='POST'));
  }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
+
+test('direct Meta media uses multipart upload and sends the returned WhatsApp media ID', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'meta-media-'));
+  try {
+    const calls = [];
+    const inbox = createMetaInbox({
+      directory,
+      facebookAuth:{peek:() => ({pageId:'123', accessToken:'test-facebook'})},
+      env:{WHATSAPP_PHONE_NUMBER_ID:'456', WHATSAPP_ACCESS_TOKEN:'test-whatsapp'},
+      async fetchImpl(url, options) {
+        calls.push({url, ...options});
+        return Response.json({id:'987'});
+      }
+    });
+    const file = {name:'scan.pdf'};
+    const bytes = Buffer.from('test file');
+    assert.equal(inbox.acceptsFile({provider:'whatsapp'}, 'scan.pdf'), true);
+    assert.equal(inbox.acceptsFile({provider:'whatsapp'}, 'scan.exe'), false);
+    await inbox.sendFile({provider:'whatsapp', externalId:'44'}, file, bytes);
+    await inbox.sendFile({provider:'facebook', externalId:'55'}, file, bytes);
+    assert(calls[0].url.endsWith('/456/media'));
+    assert.equal(calls[0].body.get('file').name, 'scan.pdf');
+    assert.deepEqual(JSON.parse(calls[1].body).document, {id:'987', filename:'scan.pdf'});
+    assert.equal(JSON.parse(calls[2].body.get('message')).attachment.type, 'file');
+    assert.equal(calls[2].body.get('filedata').name, 'scan.pdf');
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
+});
+
+test('WhatsApp media webhooks store attachments and keep the client caption', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'meta-inbound-media-'));
+  try {
+    const received = [];
+    const inbox = createMetaInbox({
+      directory,
+      env: {WHATSAPP_PHONE_NUMBER_ID:'456', WHATSAPP_ACCESS_TOKEN:'test-whatsapp'},
+      async fetchImpl(url, options) {
+        const address = String(url);
+        if (address.endsWith('/789')) return Response.json({
+          url:'https://lookaside.fbsbx.com/attachment', mime_type:'application/pdf', file_size:4
+        });
+        if (address === 'https://lookaside.fbsbx.com/attachment') {
+          assert.equal(options.headers.Authorization, 'Bearer test-whatsapp');
+          return new Response('file');
+        }
+        return Response.json({id:'outgoing'});
+      }
+    });
+    inbox.setIngest(event => received.push(event), undefined, async (response, name) => {
+      assert.equal(await response.text(), 'file');
+      return {id:'stored', name};
+    });
+    await inbox.handle({object:'whatsapp_business_account', entry:[{changes:[{field:'messages', value:{
+      messages:[{from:'44', id:'incoming', type:'document', document:{id:'789', filename:'scan.pdf', caption:'Документ'}}]
+    }}]}]});
+    assert.equal(received[0].text, 'Документ');
+    assert.deepEqual(received[0].attachment, {id:'stored', name:'scan.pdf'});
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
+});
