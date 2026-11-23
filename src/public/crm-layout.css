@@ -496,7 +496,7 @@ body:has(.login-layout) {
   font-size: .875rem;
 }
 
-.crm-office-upload-picker {
+.crm-file-picker {
   position: relative;
   display: grid;
   place-items: center;
@@ -508,7 +508,7 @@ body:has(.login-layout) {
   font-weight: 650;
 }
 
-.crm-office-upload-picker input {
+.crm-file-picker input {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -517,13 +517,15 @@ body:has(.login-layout) {
   cursor: pointer;
 }
 
-.crm-office-upload-picker:focus-within {
+.crm-file-picker:focus-within {
   outline: 2px solid var(--desk-accent);
   outline-offset: 3px;
 }
 
 #officeUploadHint { color: var(--desk-muted); }
-#officeUploadFilename { overflow-wrap: anywhere; }
+.crm-file-name { overflow-wrap: anywhere; }
+.crm-file-hint { color: var(--desk-muted); }
+.crm-tools label.crm-file-picker { place-items: center; }
 
 .crm-office-upload-expiry input {
   box-sizing: border-box;

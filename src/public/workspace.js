@@ -388,17 +388,19 @@
     }
   }
   const officeUploadForm=$('officeUpload');
-  const officeUploadFilename=$('officeUploadFilename');
-  const officeFileInput=officeUploadForm.elements.scan;
-  officeFileInput.addEventListener('change',()=>{
-    const file=officeFileInput.files[0];
-    officeUploadFilename.textContent=file?.name||'';
-    officeUploadFilename.hidden=!file;
-  });
-  officeUploadForm.addEventListener('reset',()=>{
-    officeUploadFilename.textContent='';
-    officeUploadFilename.hidden=true;
-  });
+  for (const picker of document.querySelectorAll('.crm-file-picker')) {
+    const input = picker.querySelector('input');
+    const filename = input.form.querySelector('.crm-file-name');
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      filename.textContent = file?.name || '';
+      filename.hidden = !file;
+    });
+    input.form.addEventListener('reset', () => {
+      filename.textContent = '';
+      filename.hidden = true;
+    });
+  }
   officeUploadForm.onsubmit=async event=>{
     event.preventDefault();
     const form=event.currentTarget, clientId=crmId, file=form.elements.scan.files[0];

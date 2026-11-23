@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
   <link rel="stylesheet" href="/crm-tests.css">
-    <link rel="stylesheet" href="/crm-layout.css?v=9" />
+    <link rel="stylesheet" href="/crm-layout.css?v=10" />
 
 </head>
   <body class="auth-loading feature-loading">
@@ -90,7 +90,12 @@
 <details id="reservioCalendar" data-admin-only><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3"/></svg><span>Записи Reservio</span></summary><div class="tool-body">
           <p>Загрузите календарь ICS или выгрузку записей CSV из статистики Reservio. Если отчёт скачался в Excel, сохраните его как CSV UTF-8.</p>
           <form id="reservioImport">
-            <label>Файл Reservio (.ics, .csv) <input name="file" type="file" accept=".ics,.csv,text/calendar,text/csv" required></label>
+            <label class="crm-file-picker">
+              <span>Выбрать файл</span>
+              <input name="file" type="file" accept=".ics,.csv,text/calendar,text/csv" aria-describedby="reservioFileHint" required>
+            </label>
+            <small id="reservioFileHint" class="crm-file-hint">ICS, CSV · 2 МБ</small>
+            <span class="crm-file-name" aria-live="polite" hidden></span>
             <button type="submit">Импортировать записи</button>
           </form>
           <form id="reservioLinkImport" data-super-only data-no-audit>
@@ -136,12 +141,12 @@
   <h4>Документ из офиса</h4>
   <div class="crm-office-upload-fields">
     <div class="crm-office-upload-file">
-      <label class="crm-office-upload-picker">
+      <label class="crm-file-picker">
         <span>Выбрать файл</span>
         <input type="file" name="scan" accept=".pdf,.jpg,.jpeg,.png" aria-describedby="officeUploadHint officeUploadFilename" required>
       </label>
       <small id="officeUploadHint">PDF, JPEG, PNG · 5 МБ</small>
-      <span id="officeUploadFilename" aria-live="polite" hidden></span>
+      <span id="officeUploadFilename" class="crm-file-name" aria-live="polite" hidden></span>
     </div>
     <label class="crm-office-upload-expiry">Действителен до <input type="date" name="expiry"></label>
   </div>
@@ -713,7 +718,7 @@
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
     <script src="/crm-uk.js?v=6"></script><script src="/crm-i18n.js?v=10"></script>
-    <script src="/workspace.js?v=47"></script>
+    <script src="/workspace.js?v=48"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {
