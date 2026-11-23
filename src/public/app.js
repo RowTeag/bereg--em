@@ -358,17 +358,17 @@ async function pollCrmNotice() {
     knownCrmNoticeCount = count;
     crmNotice.replaceChildren();
     if (!count) { crmNotice.hidden = true; return; }
-    const language = window.crmLanguage?.() || 'en';
+    const language = window.crmLanguage?.() || 'uk';
     const notificationCopy = {
       en: count === 1 ? 'New application from the BEREG website.' : `${count} new applications from the BEREG website.`,
-      ru: count === 1 ? 'Новая заявка с сайта BEREG.' : `Новых заявок с сайта BEREG: ${count}.`,
+      uk: count === 1 ? 'Нова заявка з сайту BEREG.' : `Нових заявок із сайту BEREG: ${count}.`,
       vi: count === 1 ? 'Có đơn đăng ký mới từ website BEREG.' : `Có ${count} đơn đăng ký mới từ website BEREG.`
     };
     const copy = document.createElement('strong');
     copy.textContent = notificationCopy[language] || notificationCopy.en;
     const open = document.createElement('button');
     open.className = 'ghost-btn'; open.type = 'button';
-    open.textContent = ({en:'Open applications',ru:'Открыть заявки',vi:'Mở danh sách đăng ký'})[language] || 'Open applications';
+    open.textContent = ({en:'Open applications',uk:'Відкрити заявки',vi:'Mở danh sách đăng ký'})[language] || 'Open applications';
     open.addEventListener('click', async () => {
       const role = window.__beregAuth?.user?.role;
       showSection(role === 'operator' ? 'inbox' : 'clients');
@@ -378,14 +378,14 @@ async function pollCrmNotice() {
     const sound = document.createElement('button');
     sound.className = 'ghost-btn crm-sound-toggle'; sound.type = 'button';
     sound.textContent = crmNoticeSoundEnabled
-      ? ({en:'Sound on',ru:'Звук включён',vi:'Đã bật âm thanh'})[language]
-      : ({en:'Enable sound',ru:'Включить звук',vi:'Bật âm thanh'})[language];
+      ? ({en:'Sound on',uk:'Звук увімкнено',vi:'Đã bật âm thanh'})[language]
+      : ({en:'Enable sound',uk:'Увімкнути звук',vi:'Bật âm thanh'})[language];
     sound.addEventListener('click', () => {
       crmNoticeSoundEnabled = !crmNoticeSoundEnabled;
       localStorage.setItem('crmNoticeSoundEnabled', String(crmNoticeSoundEnabled));
       sound.textContent = crmNoticeSoundEnabled
-        ? ({en:'Sound on',ru:'Звук включён',vi:'Đã bật âm thanh'})[language]
-        : ({en:'Enable sound',ru:'Включить звук',vi:'Bật âm thanh'})[language];
+        ? ({en:'Sound on',uk:'Звук увімкнено',vi:'Đã bật âm thanh'})[language]
+        : ({en:'Enable sound',uk:'Увімкнути звук',vi:'Bật âm thanh'})[language];
       if (crmNoticeSoundEnabled) playCrmNoticeSound();
     });
     crmNotice.append(copy, document.createTextNode(' '), open, document.createTextNode(' '), sound);
@@ -880,7 +880,7 @@ generateAiBtn.addEventListener('click', async () => {
         length: aiLength.value,
         goal: aiGoal.value,
         audience: aiAudience.value,
-        language: aiPostLanguage?.value || 'ru'
+        language: aiPostLanguage?.value || 'uk'
       })
     });
 
