@@ -222,6 +222,19 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     const client=state.clients[`ext:${provider}:${externalId}`];if(!client)return;
     client.language=language;save();
   }
+  function enqueueStaffNotice(id, operatorId, text) {
+    state.staffEvents ||= {};
+    if (state.staffEvents[id]) return;
+    state.staffEvents[id] = true;
+    state.queue.push({bot:'staff-notice', operatorId, text});
+    try { save(); }
+    catch (error) {
+      state.queue.pop();
+      delete state.staffEvents[id];
+      throw error;
+    }
+  }
+
   async function flush() {
     if(flushing){flushAgain=true;return;}
     flushing=true;
@@ -230,6 +243,18 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
         state.queue.splice(state.queue.indexOf(item),1);save();continue;
       }
       if (item.retryAt > Date.now()) continue;
+      if (item.bot === 'staff-notice') {
+        const recipient = state.operators.find(person => person.id === item.operatorId && person.enabled && person.chatId);
+        if (!recipient) continue;
+        try {
+          await send('operator', recipient.chatId, item.text);
+          state.queue.splice(state.queue.indexOf(item), 1);
+        } catch {
+          item.retryAt = Date.now() + 60000;
+        }
+        save();
+        continue;
+      }
       const client = state.clients[item.clientId];
       assign(client); save();
       const operator = state.operators.find(o => o.id === client.operatorId && o.enabled);
@@ -413,7 +438,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     for(let index=0;index<pending.length;index+=4){await Promise.all(pending.slice(index,index+4).map(async item=>{item.translations[language]=await translateMessage(item.text,language,item.sourceLanguage||client.language);}));save();}
     return {...client,history:client.history.map(item=>({...item,originalText:item.text,text:item.direction==='in'?(item.translations?.[language]||item.text):item.text}))};
   }
-  return { files, start, snapshot, diagnostics, addOperator, getOperatorPassword, setOperatorPassword, disable, handle, handleWebhook, configureWebhooks, flush, ingestExternal, setClientLanguage, sendApplicationDocument, prepareHistory, state, save, translate:tr };
+  return { files, start, snapshot, diagnostics, addOperator, getOperatorPassword, setOperatorPassword, disable, handle, handleWebhook, configureWebhooks, flush, ingestExternal, setClientLanguage, sendApplicationDocument, enqueueStaffNotice, prepareHistory, state, save, translate:tr };
 }
 function mountSupport(app, options) {
   const support = createSupport(options);

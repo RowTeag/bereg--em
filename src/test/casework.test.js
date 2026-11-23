@@ -87,3 +87,58 @@ test('Reservio URL import rejects unrelated links and restricts access to the ow
     fs.rmSync(directory, {recursive: true, force: true});
   }
 });
+
+test('case tasks track deadlines, queue staff notices once and record the status response date', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'casework-tasks-'));
+  try {
+    const routes = {};
+    const app = {locals:{}, get:(url, fn) => {routes[url] = fn;}, post:(url, fn) => {routes[url] = fn;}};
+    const notices = [];
+    const support = {
+      state:{clients:{}, operators:[{id:'staff', enabled:true, chatId:'12345'}], staffEvents:{}},
+      enqueueStaffNotice(id, operatorId, text) {
+        this.state.staffEvents[id] = true;
+        notices.push({operatorId, text});
+      },
+      async flush() {}
+    };
+    const clients = {list:() => [{id:'client', first:'Олена', last:'Тест'}]};
+    const mount = () => mountCasework(app, {directory, clients, support, worker:true});
+    const call = (url, body, params = {}, panelUser={role:'admin'}) => {
+      const response = {code:200, status(code) {this.code = code; return this;}, json(data) {this.data = data;}, sendStatus(code) {this.code = code;}};
+      routes[url]({body, params, panelUser}, response);
+      return response;
+    };
+    mount();
+    const task = {clientId:'client', assignee:'staff', date:'2020-11-23'};
+    for (const kind of ['documents', 'translation', 'questionnaire', 'interview', 'status']) {
+      const input = {...task, id:crypto.randomUUID(), kind};
+      assert.equal(call('/api/casework/tasks', input).code, 201);
+      assert.equal(call('/api/casework/tasks', input).code, 200);
+    }
+    const {tasks} = call('/api/casework').data;
+    assert.deepEqual(tasks.map(row => row.remindOn), ['2020-11-09', '2020-11-19', '2020-11-19', '2020-11-16', '2020-11-23']);
+    const statusId = tasks.at(-1).id;
+    assert.equal(call('/api/casework/tasks/:id/complete', {date:'2020-11-22'}, {id:statusId}).code, 400);
+    assert.equal(call('/api/casework/tasks/:id/complete', {date:'2020-11-25'}, {id:statusId}).code, 200);
+    await app.locals.beregCaseworkTick();
+    mount();
+    await app.locals.beregCaseworkTick();
+    assert.equal(call('/api/casework').data.tasks.at(-1).completedOn, '2020-11-25');
+    assert.equal(notices.length, 4);
+    assert(notices.every(notice => notice.operatorId === 'staff' && notice.text.includes('Тест Олена')));
+    const staff = {role:'operator', operatorId:'staff'};
+    const unrelated = {role:'operator', operatorId:'someone-else'};
+    const mine = '/api/casework/my-tasks';
+    assert.equal(call(mine, null, {}, staff).data.tasks.length, 4);
+    assert.deepEqual(call(mine, null, {}, unrelated).data.tasks, []);
+    assert.equal(call(mine, null, {}, staff).data.tasks[0].clientName, 'Тест Олена');
+    const complete = '/api/casework/tasks/:id/complete';
+    assert.equal(call(complete, {}, {id:tasks[0].id}, unrelated).code, 404);
+    assert.equal(call(complete, {}, {id:statusId}, staff).code, 404);
+    assert.equal(call(complete, {}, {id:tasks[0].id}, staff).code, 200);
+    assert.equal(call(mine, null, {}, staff).data.tasks.length, 3);
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
+});

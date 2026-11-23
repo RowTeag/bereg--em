@@ -76,6 +76,12 @@
       const day=(c.createdAt||'').slice(0,10);
       if((filters.from&&day<filters.from)||(filters.to&&day>filters.to))return false;
       if(filters.history){const paid=caseData.payments.some(p=>p.clientId===c.id);if(paid!==(filters.history==='paid'))return false;}
+      if (filters.taskKind || filters.taskState) {
+        const matchingTask = (caseData.tasks || []).some(task => task.clientId === c.id &&
+          (!filters.taskKind || task.kind === filters.taskKind) &&
+          (!filters.taskState || Boolean(task.completedOn) === (filters.taskState === 'completed')));
+        if (!matchingTask) return false;
+      }
       return true;
     };
     const q=$('crmSearch').value.toLowerCase();const filtered=crmRecords.filter(matches).filter(c=>[c.first,c.last,c.contact].join(' ').toLowerCase().includes(q));visibleClientIds=filtered.map(c=>c.id);$('crmList').innerHTML=filtered.map(c=>`<button class="inbox-item" data-crm="${esc(c.id)}"><span class="client-initial">${esc(c.first[0])}</span><span><strong>${esc(c.last)} ${esc(c.first)}</strong><small>${esc(c.contact)} · ${esc(clientLanguageLabel(c.language))}</small></span></button>`).join('')||'<div class="workspace-empty">Клиентов пока нет</div>';for(const b of $('crmList').querySelectorAll('[data-crm]'))b.onclick=()=>openCrm(b.dataset.crm);}
@@ -83,7 +89,9 @@
   $('clientFilters').oninput=()=>renderCrm();
   $('clientFilters').onsubmit=e=>e.preventDefault();
   $('clientFilters').onreset=()=>setTimeout(renderCrm,0);
-  $('clientFilters').elements.history.onchange=()=>refreshCasework().then(renderCrm).catch(e=>{$('crmStatus').textContent=e.message;});
+  for (const filter of ['history','taskKind','taskState']) {
+    $('clientFilters').elements[filter].onchange=()=>refreshCasework().catch(e=>{$('crmStatus').textContent=e.message;});
+  }
   $('showFilteredClients').onclick=()=>{
     navigate('clients');
     $('clients').scrollIntoView({block:'start'});
@@ -153,6 +161,7 @@
     select.replaceChildren(new Option('Выберите диалог',''));
     for(const d of client.dialogs||[])if(client.dialogIds?.includes(d.id))select.add(new Option((d.provider||'Telegram')+' · '+d.name,d.id));
     select.value=previous;
+    drawCaseTasks();
     $('casePayments').replaceChildren();
     for(const p of caseData.payments.filter(p=>p.clientId===crmId)){
       const line=document.createElement('p');
@@ -171,6 +180,125 @@
       $('caseRequests').append(line);
     }
   }
+  const taskForm = $('caseTaskForm');
+  const taskLabels = Object.fromEntries([...taskForm.elements.kind.options].map(option => [option.value, option.textContent]));
+  const taskStatus = $('caseTaskStatus');
+  let taskStaff = [];
+  function updateTaskFields() {
+    const isStatus = taskForm.elements.kind.value === 'status';
+    $('caseTaskAssignee').hidden = isStatus;
+    taskForm.elements.assignee.disabled = isStatus;
+    $('caseTaskDateLabel').textContent = isStatus ? 'Дата запиту' : 'Строк виконання';
+  }
+  taskForm.elements.kind.onchange = updateTaskFields;
+  $('caseTaskDetails').ontoggle = async () => {
+    if (!$('caseTaskDetails').open) return;
+    try {
+      taskStaff = await api('/api/casework/staff');
+      const select = taskForm.elements.assignee;
+      const previous = select.value;
+      select.replaceChildren(new Option('Виберіть працівника', ''));
+      for (const person of taskStaff.filter(person => person.enabled)) {
+        select.add(new Option(person.name + (person.telegram ? '' : ' · Telegram не підключено'), person.id));
+      }
+      select.value = previous || '';
+      drawCaseTasks();
+    } catch (error) { taskStatus.textContent = error.message; }
+  };
+  taskForm.oninput = () => { delete taskForm.dataset.operation; };
+  taskForm.onsubmit = async event => {
+    event.preventDefault();
+    const clientId = crmId;
+    const button = taskForm.querySelector('button');
+    const fields = Object.fromEntries(new FormData(taskForm));
+    taskForm.dataset.operation ||= crypto.randomUUID();
+    button.disabled = true;
+    try {
+      await post('/api/casework/tasks', {...fields, id:taskForm.dataset.operation, clientId});
+      if (crmId === clientId) {
+        taskForm.reset();
+        updateTaskFields();
+        delete taskForm.dataset.operation;
+        taskStatus.textContent = 'Завдання додано.';
+      }
+      await refreshCasework();
+    } catch (error) {
+      if (crmId === clientId) taskStatus.textContent = error.message;
+    } finally { button.disabled = false; }
+  };
+  function drawCaseTasks() {
+    renderCaseTasks($('caseTasks'), (caseData.tasks || []).filter(task => task.clientId === crmId));
+  }
+  function renderCaseTasks(container, rows, {refresh=refreshCasework, status=taskStatus}={}) {
+    container.replaceChildren();
+    if (!rows.length) {
+      container.textContent = 'Завдань поки немає.';
+      return;
+    }
+    for (const task of rows) {
+      const article = document.createElement('article');
+      const heading = document.createElement('strong');
+      heading.textContent = [taskLabels[task.kind],task.clientName].filter(Boolean).join(' · ');
+      const dates = document.createElement('p');
+      const isStatus = task.kind === 'status';
+      dates.textContent = isStatus ? 'Запит від ' + task.date : 'Строк ' + task.date + ' · нагадування ' + task.remindOn;
+      if (task.completedOn) dates.textContent += (isStatus ? ' · відповідь ' : ' · завершено ') + task.completedOn;
+      article.append(heading, dates);
+      const assignee = taskStaff.find(person => person.id === task.assignee);
+      if (assignee) {
+        const assigned = document.createElement('p');
+        assigned.textContent = 'Відповідальний працівник · ' + assignee.name;
+        article.append(assigned);
+      }
+      if (task.note) {
+        const note = document.createElement('p');
+        note.textContent = task.note;
+        article.append(note);
+      }
+      if (!task.completedOn) {
+        const complete = document.createElement('form');
+        let date;
+        if (isStatus) {
+          const label = document.createElement('label');
+          label.textContent = 'Дата відповіді';
+          date = document.createElement('input');
+          date.type = 'date'; date.required = true; date.min = task.date;
+          label.append(date);
+          complete.append(label);
+        }
+        const button = document.createElement('button');
+        button.className = 'ghost-btn';
+        button.textContent = isStatus ? 'Записати відповідь' : 'Позначити завершеним';
+        complete.append(button);
+        complete.onsubmit = async event => {
+          event.preventDefault();
+          button.disabled = true;
+          try {
+            await post('/api/casework/tasks/' + task.id + '/complete', date ? {date:date.value} : {});
+            await refresh();
+          } catch (error) { status.textContent = error.message; }
+          finally { button.disabled = false; }
+        };
+        article.append(complete);
+      }
+      container.append(article);
+    }
+  }
+  async function loadStaffTasks() {
+    const panel = $('staffTasksPanel'), status = $('staffTasksStatus');
+    panel.hidden = false;
+    try {
+      const {tasks,today} = await api('/api/casework/my-tasks');
+      const attention = tasks.filter(task => task.remindOn <= today).length;
+      $('staffTasksSummary').textContent = 'Мої завдання · ' + tasks.length +
+        (attention ? ' · потребують уваги: ' + attention : '');
+      if (panel.open) renderCaseTasks($('staffTasksList'), tasks, {refresh:loadStaffTasks,status});
+      status.textContent = '';
+    } catch (error) { status.textContent = error.message; }
+  }
+  $('staffTasksPanel').ontoggle = () => {
+    if ($('staffTasksPanel').open) loadStaffTasks();
+  };
   function drawReport(){
     const totals=new Map(),from=$('reportFrom').value,to=$('reportTo').value;
     const box=$('caseTotals');box.replaceChildren();
@@ -185,7 +313,7 @@
     if(!rows.length)box.textContent='За период нет записанных оплат.';
   }
   async function refreshCasework(){
-    caseData=await api('/api/casework');drawCasework();drawReport();drawBookings();
+    caseData=await api('/api/casework');drawCasework();drawReport();drawBookings();renderCrm();
   }
   $('caseReport').ontoggle=()=>{if($('caseReport').open)refreshCasework().catch(e=>{$('caseTotals').textContent=e.message;});};
   $('reportFrom').oninput=drawReport;$('reportTo').oninput=drawReport;
@@ -203,6 +331,13 @@
     };
   }
   async function openCrm(id){
+    if (crmId !== id) {
+      $('caseTaskDetails').open = false;
+      taskForm.reset();
+      updateTaskFields();
+      delete taskForm.dataset.operation;
+      taskStatus.textContent = '';
+    }
     if(crmId!==id){for(const name of ['casePayForm','caseRequestForm']){$(name).reset();delete $(name).dataset.operation;}}
     crmId=id;drawCasework();if(id)refreshCasework().catch(e=>{$('crmStatus').textContent=e.message;});$('officeUpload').reset();crmForm.reset();$('crmStatus').textContent='';const c=crmRecords.find(x=>x.id===id);$('crmTitle').textContent=c?c.last+' '+c.first:'Новый клиент';$('crmDialogs').replaceChildren();renderCrmDocuments(c);if(!c)return;for(const e of crmForm.elements)if(e.name)e.value=c[e.name]||'';
   $('crmDialogs').innerHTML=`<h3>Связаться с клиентом</h3><p>Ссылки открывают приложение. Наличие аккаунта по номеру не проверено.</p><div class="crm-contact-actions">${c.phone?`<a class="ghost-btn" href="https://wa.me/${encodeURIComponent(c.phone)}" target="_blank" rel="noopener">WhatsApp ↗</a> <a class="ghost-btn" href="https://t.me/+${encodeURIComponent(c.phone)}" target="_blank" rel="noopener">Telegram ↗</a> <a class="ghost-btn" href="tel:+${encodeURIComponent(c.phone)}">Позвонить</a>`:'<span>Телефон не указан в обращении</span>'}</div><p>Переписка в панели появляется после обращения клиента через подключённый канал.</p>`;
@@ -413,7 +548,7 @@
   async function loadConversation(id){const client=clients.find(item=>item.id===id);if(!client)return;client.loading=true;if(selected===id)renderConversation();try{const result=await api('/api/telegram/inbox/'+encodeURIComponent(id)+'?language='+encodeURIComponent(replyLanguage));const index=clients.findIndex(item=>item.id===id);if(index>=0)clients[index]=result.client;if(selected===id)renderConversation();}catch(error){client.loading=false;if(selected===id){$('inboxStatus').textContent=error.message;renderConversation();}}}
   let lastSyncedOperatorLanguage='';async function syncOperatorLanguage(){if(user.role!=='operator')return;const language=replyLanguage;if(!supportedReplyLanguages.includes(language)||language===lastSyncedOperatorLanguage)return;try{await api('/api/telegram/operator-language',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({language})});lastSyncedOperatorLanguage=language;}catch(error){$('inboxStatus').textContent=error.message;}}
   document.addEventListener('crm-language-change',()=>{replyLanguage=interfaceLanguage();lastSyncedOperatorLanguage='';renderCrm();renderList();renderConversation();syncOperatorLanguage();if($('inbox').classList.contains('active'))loadInbox();});
-  async function loadInbox(){try{await syncOperatorLanguage();({clients}=await api('/api/telegram/inbox'));if(!clients.some(c=>c.id===selected))selected=null;renderList();if(selected)await loadConversation(selected);else renderConversation();}catch(e){$('inboxStatus').textContent=e.message;}}
+  async function loadInbox(){void loadStaffTasks();try{await syncOperatorLanguage();({clients}=await api('/api/telegram/inbox'));if(!clients.some(c=>c.id===selected))selected=null;renderList();if(selected)await loadConversation(selected);else renderConversation();}catch(e){$('inboxStatus').textContent=e.message;}}
   const templatePanel=$('replyTemplates'), templateEditor=$('replyTemplateEditor');
   const templateLanguage=$('replyTemplateLanguage'), templateSelect=$('replyTemplateSelect');
   const templateStatus=$('replyTemplateStatus');

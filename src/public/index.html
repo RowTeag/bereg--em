@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
   <link rel="stylesheet" href="/crm-tests.css">
-    <link rel="stylesheet" href="/crm-layout.css?v=6" />
+    <link rel="stylesheet" href="/crm-layout.css?v=7" />
 
 </head>
   <body class="auth-loading feature-loading">
@@ -107,6 +107,8 @@
 <label>Активный заказ <select name="activeOrder"><option value="">Все</option><option value="yes">Да</option><option value="no">Нет</option></select></label>
 <label>Обращение с <input name="from" type="date"></label><label>По <input name="to" type="date"></label>
 <label>История <select name="history"><option value="">Все</option><option value="paid">Ранее платили</option><option value="unpaid">Без записанных оплат</option></select></label>
+<label>Завдання у справі <select name="taskKind"><option value="">Усі</option><option value="documents">Донесення документів</option><option value="translation">Переклад</option><option value="questionnaire">Підготовка анкети</option><option value="interview">Підготовка до співбесіди</option><option value="status">Запит про стан справи</option></select></label>
+<label>Стан завдання <select name="taskState"><option value="">Усі</option><option value="open">Відкриті</option><option value="completed">Завершені</option></select></label>
 <button type="reset">Сбросить</button> <button type="button" id="showFilteredClients">Показать клиентов</button></form></div></details><details data-admin-only><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 18-7-6 18-4-7-8-4Zm8 4L21 3"/></svg><span>Рассылка выбранной группе</span></summary><div class="tool-body"><form id="campaignForm"><label>Сообщение подписчикам Telegram <textarea name="message" maxlength="3200" required></textarea></label>
 <p>Получатели выбираются фильтрами списка. Для подписки клиент отправляет боту /subscribe, для отмены — /unsubscribe.</p><button>Отправить подписчикам</button></form><p id="campaignStatus" role="status"></p></div></details>
         </div>
@@ -132,6 +134,16 @@
   </div>
   <button class="ghost-btn" type="submit">Прикрепить к карточке</button>
 </form><div id="crmDocuments"></div><button type="button" class="crm-test-button" data-crm-test="documents" aria-label="Тест: пример срока документа" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span><div id="crmDialogs"></div><div id="casework" hidden><div class="crm-tools crm-casework-tools">
+<details id="caseTaskDetails"><summary>Завдання у справі</summary><div class="tool-body">
+<div id="caseTasks"></div>
+<form id="caseTaskForm" class="workspace-form">
+<label>Тип завдання <select name="kind"><option value="documents">Донесення документів</option><option value="translation">Переклад</option><option value="questionnaire">Підготовка анкети</option><option value="interview">Підготовка до співбесіди</option><option value="status">Запит про стан справи</option></select></label>
+<label id="caseTaskAssignee">Відповідальний працівник <select name="assignee" required></select></label>
+<label><span id="caseTaskDateLabel">Строк виконання</span> <input type="date" name="date" required></label>
+<label>Опис <textarea name="note" rows="2" maxlength="2000"></textarea></label>
+<button class="primary-btn">Додати завдання</button>
+</form><p id="caseTaskStatus" role="status"></p>
+</div></details>
 <details><summary>Оплаты клиента</summary><div class="tool-body"><div id="casePayments"></div>
 <form id="casePayForm"><label>Услуга <input name="service" maxlength="120" required></label>
 <label>Сумма <input type="number" name="amount" min="0.01" step="0.01" required></label>
@@ -143,7 +155,11 @@
 <label>Что нужно прислать <textarea name="text" maxlength="3200" required></textarea></label>
 <label>Срок подачи <input type="date" name="due" required></label><label>Дата напоминания <input type="date" name="remind" required></label>
 <button class="primary-btn">Отправить запрос и запланировать напоминание</button></form></div></details></div></div></article></div></section>
-        <section id="inbox" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">КЛИЕНТСКИЙ СЕРВИС</span><h2>Диалоги, которые важны.</h2><p id="inboxScope">Обращения ваших клиентов — от первого вопроса до решения.</p></div><div id="inboxNewMessageNotice" class="crm-notice" role="status" aria-live="polite" hidden></div><div class="inbox-toolbar"><input id="inboxSearch" placeholder="Найти клиента или сообщение" aria-label="Поиск обращений"><select id="inboxFilter" aria-label="Статус обращения"><option value="active">Активные</option><option value="all">Все обращения</option><option value="closed">Закрытые</option></select><button id="enableInboxNotifications" class="ghost-btn audio-button" type="button">🔔 Включить звук</button><button id="refreshInbox" class="ghost-btn">Обновить</button></div><p id="inboxStatus" role="status"></p><div class="inbox-layout"><aside class="card" id="inboxList"></aside><article class="card inbox-dialog" aria-label="Переписка"><button id="inboxBack" class="ghost-btn" type="button">← Все обращения</button><div id="inboxConversation"><div class="workspace-empty">Выберите обращение слева<br><small>Здесь появится история переписки.</small></div></div><form id="inboxReplyForm" hidden><label for="inboxReply">Ответ клиенту</label><textarea id="inboxReply" name="message" maxlength="3500" rows="3" required placeholder="Напишите ответ…"></textarea><div class="inbox-reply-actions"><button class="primary-btn">Отправить ответ</button><button class="ghost-btn" type="button" id="closeTicket">Закрыть обращение</button></div></form>
+        <section id="inbox" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">КЛИЕНТСКИЙ СЕРВИС</span><h2>Диалоги, которые важны.</h2><p id="inboxScope">Обращения ваших клиентов — от первого вопроса до решения.</p></div><details id="staffTasksPanel" class="card staff-tasks-panel" hidden>
+  <summary id="staffTasksSummary">Мої завдання</summary>
+  <div id="staffTasksList"></div>
+  <p id="staffTasksStatus" role="status"></p>
+</details><div id="inboxNewMessageNotice" class="crm-notice" role="status" aria-live="polite" hidden></div><div class="inbox-toolbar"><input id="inboxSearch" placeholder="Найти клиента или сообщение" aria-label="Поиск обращений"><select id="inboxFilter" aria-label="Статус обращения"><option value="active">Активные</option><option value="all">Все обращения</option><option value="closed">Закрытые</option></select><button id="enableInboxNotifications" class="ghost-btn audio-button" type="button">🔔 Включить звук</button><button id="refreshInbox" class="ghost-btn">Обновить</button></div><p id="inboxStatus" role="status"></p><div class="inbox-layout"><aside class="card" id="inboxList"></aside><article class="card inbox-dialog" aria-label="Переписка"><button id="inboxBack" class="ghost-btn" type="button">← Все обращения</button><div id="inboxConversation"><div class="workspace-empty">Выберите обращение слева<br><small>Здесь появится история переписки.</small></div></div><form id="inboxReplyForm" hidden><label for="inboxReply">Ответ клиенту</label><textarea id="inboxReply" name="message" maxlength="3500" rows="3" required placeholder="Напишите ответ…"></textarea><div class="inbox-reply-actions"><button class="primary-btn">Отправить ответ</button><button class="ghost-btn" type="button" id="closeTicket">Закрыть обращение</button></div></form>
 <div class="crm-tools inbox-tools">
 <div id="inboxDialogTools" hidden></div>
 <details id="replyTemplates">
@@ -693,7 +709,7 @@
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
     <script src="/crm-uk.js?v=5"></script><script src="/crm-i18n.js?v=10"></script>
-    <script src="/workspace.js?v=43"></script>
+    <script src="/workspace.js?v=44"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {
