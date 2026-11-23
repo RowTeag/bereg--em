@@ -1,0 +1,210 @@
+:root {
+  --desk-base: #101821;
+  --desk-surface: #182431;
+  --desk-raised: #202f3e;
+  --desk-line: #34465a;
+  --desk-text: #f0f5fa;
+  --desk-muted: #b0c0cf;
+  --desk-accent: #9de2cc;
+}
+
+body:has(.app-shell),
+body:has(.mini-shell) {
+  background: var(--desk-base) !important;
+  color: var(--desk-text);
+}
+
+body .app-shell {
+  width: min(1600px, 100%);
+  margin: 0 auto;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--desk-base) !important;
+  box-shadow: none !important;
+}
+
+.app-shell .sidebar {
+  background: #131e29 !important;
+  border-color: var(--desk-line) !important;
+}
+
+.app-shell .sidebar button.nav-home.active,
+.app-shell .sidebar .nav-group-items .nav-item.active {
+  background: #274a50 !important;
+  color: var(--desk-text) !important;
+}
+
+.app-shell .main-panel { min-width: 0; padding: clamp(16px, 2.5vw, 36px); }
+.app-shell .topbar { border-color: var(--desk-line) !important; }
+.app-shell .topbar h1,
+.app-shell .main-panel h2,
+.app-shell .main-panel h3 { color: var(--desk-text) !important; }
+
+.app-shell .main-panel :is(.card, .stat-card, .settings-card, .support-channel-card),
+.app-shell .main-panel .role-cards article {
+  min-width: 0;
+  background: var(--desk-surface) !important;
+  border-color: var(--desk-line) !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+}
+
+.app-shell .main-panel .stat-card { padding: clamp(14px, 2vw, 22px) !important; }
+.app-shell .main-panel .stat-card::before { background: var(--desk-accent) !important; }
+.app-shell .main-panel .stat-card :is(.label, small) { color: var(--desk-muted) !important; }
+.app-shell .main-panel .stat-card,
+.app-shell .main-panel .card-header { overflow-wrap: anywhere; }
+.app-shell .main-panel .card-header { flex-wrap: wrap; gap: 10px; }
+.app-shell .main-panel .card-header .chip { max-width: 100%; white-space: normal; }
+
+.app-shell .main-panel :is(.ai-box, .metric-box, .mini-card),
+.app-shell .main-panel .tool-body {
+  background: var(--desk-raised);
+  border-color: var(--desk-line);
+}
+
+.app-shell .main-panel :is(input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select),
+.app-shell .topbar .language-picker select {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--desk-text) !important;
+  background-color: var(--desk-base) !important;
+  border-color: var(--desk-line) !important;
+}
+
+.app-shell .main-panel :is(.primary-btn, button.primary-btn),
+.crm-tools form > button {
+  background: var(--desk-accent) !important;
+  color: #10241f !important;
+  border-radius: 10px !important;
+}
+
+.app-shell .main-panel :is(.ghost-btn, button.ghost-btn) {
+  color: var(--desk-text) !important;
+  background: var(--desk-raised) !important;
+  border-color: var(--desk-line) !important;
+  border-radius: 10px !important;
+}
+
+.app-shell .main-panel a.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.crm-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
+  margin: 18px 0 24px;
+}
+
+.crm-tools > details {
+  min-width: 0;
+  border: 1px solid var(--desk-line);
+  border-radius: 14px;
+  background: var(--desk-surface);
+  overflow: hidden;
+}
+
+.crm-tools > details[open] { grid-column: 1 / -1; }
+.crm-tools summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 14px;
+  font-weight: 650;
+  list-style: none;
+  cursor: pointer;
+}
+.crm-tools summary::-webkit-details-marker { display: none; }
+.crm-tools .tool-icon { width: 19px; height: 19px; flex: none; color: var(--desk-accent); }
+.crm-tools summary::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: none;
+  margin-left: auto;
+  border-right: 2px solid var(--desk-muted);
+  border-bottom: 2px solid var(--desk-muted);
+  transform: rotate(45deg);
+}
+.crm-tools details[open] > summary::after { transform: rotate(225deg); }
+.crm-tools .tool-body, .crm-tools form { display: grid; gap: 12px; }
+.crm-tools .tool-body { padding: 16px; border-top: 1px solid var(--desk-line); }
+.crm-tools label { display: grid; gap: 6px; min-width: 0; }
+.crm-tools :is(input, select, textarea) { width: 100%; min-width: 0; }
+.crm-tools button { justify-self: start; padding: 9px 14px; }
+.crm-tools .tool-body :is(p, div):empty { display: none; }
+.crm-tools .tool-body p { margin: 0; }
+.crm-tools #clientFilters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+#crmDocuments:not(:empty), #crmDialogs:not(:empty) {
+  display: grid;
+  gap: 12px;
+  margin-block: 16px;
+  padding: 16px;
+  min-width: 0;
+  border: 1px solid var(--desk-line);
+  border-radius: 12px;
+}
+#crmDocuments > p, #crmDialogs > p, #crmDialogs > h3, #crmDocuments > h3 { margin: 0; }
+#crmDocuments > p, .crm-contact-actions, .crm-dialog-link {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+#crmDocuments small { color: var(--desk-muted); }
+#crmDocuments > a { justify-self: start; }
+.crm-dialog-link select { flex: 1 1 15rem; width: 100%; }
+.crm-contact-actions > *, .crm-dialog-link > button { max-width: 100%; }
+
+.mini-shell {
+  --bg: var(--desk-base);
+  --panel: var(--desk-surface);
+  --panel2: var(--desk-raised);
+  --line: var(--desk-line);
+  --text: var(--desk-text);
+  --muted: var(--desk-muted);
+  --green: #2c625c;
+  --lime: var(--desk-accent);
+}
+.mini-shell :is(.mini-header, .mini-page, .mini-card) { background: var(--desk-surface); }
+.mini-shell :is(.mini-header, .mini-account, .mini-tabs) { flex-wrap: wrap; gap: 8px; }
+.mini-shell :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+
+body:has(.login-layout) {
+  --paper: #eef3f8;
+  --ink: #172534;
+  --line: #c2cfdd;
+  --muted: #43586a;
+  --forest-100: #e0eceb;
+  --forest-900: #19493f;
+}
+
+@media (max-width: 760px) {
+  .app-shell .main-panel { padding: 14px; }
+  .app-shell .main-panel :is(input:not([type=checkbox]):not([type=radio]), textarea, select),
+  .mini-shell :is(input, select, textarea) { font-size: 16px !important; }
+  .app-shell .main-panel .card-header { align-items: flex-start; }
+  .app-shell .main-panel .card-header h3 { flex: 1 0 100%; }
+  .crm-tools { grid-template-columns: minmax(0, 1fr); }
+  .crm-dialog-link select { flex-basis: 100%; }
+}
+
+@media (max-width: 480px) {
+  .crm-tools #clientFilters { grid-template-columns: minmax(0, 1fr); }
+  #crmDocuments > p { align-items: flex-start; flex-direction: column; }
+  .mini-shell { width: calc(100% - 24px); }
+}
+
+:where(.app-shell, .mini-shell) :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: 3px;
+}

@@ -35,7 +35,7 @@
  'Мини CRM':'Міні CRM','Проверка входа…':'Перевірка входу…','Журнал действий':'Журнал дій',
  'Защищённая рабочая область BEREG':'Захищена робоча область BEREG'
  };
- const langKey='beregCrmLanguage';let language=localStorage.getItem(langKey)||'en';if(!['en','ru','uk','vi'].includes(language))language='en';
+ const langKey='beregCrmLanguageV2';let language=localStorage.getItem(langKey)||'ru';if(!['en','ru','uk','vi'].includes(language))language='ru';
  const ukrainian=window.crmUkrainian||{};
  const translate=value=>{const clean=value.trim();const english=pairs[clean]||extra.ruToEn[clean]||clean;const mapped=language==='en'?(pairs[clean]||extra.ruToEn[clean]):language==='ru'?(ruOverrides[clean]||reverse[clean]||reverseExtra[clean]):language==='uk'?(ukrainian[clean]||uk[english]||uk[clean]):(vi[english]||extra.enToVi[english]);return mapped===undefined||mapped===clean?value:value.replace(clean,mapped);};
  const textSources=new WeakMap(),attributeSources=new WeakMap(),initialTitle=document.title;
