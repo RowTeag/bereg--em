@@ -123,6 +123,17 @@
           <div class="workspace-intro"><span class="workspace-kicker">КОМАНДА</span><h2>Каждому — свой доступ.</h2><p>Создавайте личные аккаунты и управляйте доступом сотрудников. Владелец видит все разделы и обращения.</p></div>
           <div class="role-cards"><article><span>01</span><h3>Суперадминистратор</h3><p>Все данные, настройки, подключения и управление аккаунтами.</p><b>Ваш уровень доступа</b></article><article><span>02</span><h3>Администратор</h3><p>Контент, аналитика, все обращения и Telegram-операторы.</p></article><article><span>03</span><h3>Оператор</h3><p>Только закреплённые клиенты, переписка и закрытие обращений.</p></article></div>
           <div class="access-grid"><article class="card"><h3>Новый сотрудник</h3><form id="createUserForm" class="workspace-form"><label>Имя<input name="name" required maxlength="70" placeholder="Анна Иванова"></label><label>Логин<input name="username" required pattern="[a-zA-Z0-9_.-]{3,40}" placeholder="anna.ivanova" autocomplete="off"></label><label>Роль<select name="role"><option value="admin">Администратор</option><option value="operator">Оператор</option></select></label><label id="operatorLinkLabel" hidden>Telegram-оператор<select name="operatorId" id="operatorLink"></select><small>Если оставить новый оператор, бот создаст Telegram-доступ автоматически и покажет оба пароля.</small></label><button class="primary-btn">Создать аккаунт</button></form><p id="newUserResult" role="status"></p></article><article class="card"><div class="card-header"><h3>Участники команды</h3><button id="refreshUsers" class="ghost-btn">Обновить</button></div><div id="workspaceUsers"></div></article></div>
+          <article class="card">
+            <h3>Сповіщення про прострочені відповіді</h3>
+            <form id="overdueSettings" class="workspace-form">
+              <label>Отримувач у Telegram
+                <select name="operatorId" disabled aria-describedby="overdueSettingsHelp"></select>
+              </label>
+              <small id="overdueSettingsHelp">Виберіть керівника, який увійшов у Telegram-бот команди. Бот надсилає одне сповіщення за період очікування.</small>
+              <button class="primary-btn" type="submit" disabled>Зберегти</button>
+            </form>
+            <p id="overdueSettingsStatus" role="status"></p>
+          </article>
         </section>
         <section id="clients" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">BEREG · КЛИЕНТЫ</span><h2>Клиенты и анкеты</h2><p>Анкета с сайта BEREG. Укажите телефон с кодом страны; номера документов не нужны.</p></div><div id="inboxOverdue" role="status"></div><div class="inbox-toolbar"><button type="button" class="crm-test-button" data-crm-test="inbox" aria-label="Тест: пример переписки" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span><input id="crmSearch" placeholder="Поиск по имени или телефону"><button id="crmNew" class="primary-btn">Добавить клиента</button><button id="crmRefresh" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="crmList"></aside><article class="card" style="padding:24px"><h3 id="crmTitle">Новый клиент</h3>
 <div class="crm-tools crm-casework-tools" hidden>
@@ -723,7 +734,7 @@
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
     <script src="/crm-uk.js?v=8"></script><script src="/crm-i18n.js?v=11"></script>
-    <script src="/workspace.js?v=50"></script>
+    <script src="/workspace.js?v=51"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {

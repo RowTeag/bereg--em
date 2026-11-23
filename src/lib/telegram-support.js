@@ -4,6 +4,18 @@ const crypto = require('crypto');
 const { translateMessage, detectMessageLanguage } = require('./message-translation');
 const { languages, languageCodes } = require('./languages');
 
+function overdueSince(client, now) {
+  if (client.demo || client.status === 'closed') return null;
+  let waiting;
+  for (const message of client.history || []) {
+    if (message.direction === 'in') waiting ||= message.at;
+    else if (message.direction === 'out' && !message.eventId && !message.campaignId) waiting = null;
+  }
+  const minutes = Number(process.env.BEREG_REPLY_MINUTES || 60);
+  const threshold = Number.isFinite(minutes) && minutes > 0 ? minutes : 60;
+  return waiting && now - Date.parse(waiting) >= threshold * 60000 ? waiting : null;
+}
+
 function createSupport({ directory, tokens = {}, api: customApi, externalSender, externalFileSender, autoReply, semanticReply, workerMode = false, webhookSecret = '', webhookBaseUrl = '' }) {
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   const files=require('./dialog-files').createDialogFiles(directory,tokens.client);
@@ -250,10 +262,62 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     }
   }
 
+  function overdueRecipient() {
+    const recipient = state.overdueRecipient;
+    return recipient && state.operators.find(operator =>
+      operator.id === recipient.id && operator.enabled && operator.chatId === recipient.chatId);
+  }
+
+  function queueOverdueNotices() {
+    const recipient = overdueRecipient();
+    if (!recipient) return;
+    const now = Date.now();
+    const pending = new Set(state.queue.filter(item => item.bot === 'overdue-notice' &&
+      item.operatorId === recipient.id && item.chatId === recipient.chatId).map(item => JSON.stringify([item.clientId, item.since])));
+    const notices = [];
+    for (const client of Object.values(state.clients)) {
+      const since = overdueSince(client, now);
+      if (!since || client.overdueNotifiedSince === since || pending.has(JSON.stringify([client.id, since]))) continue;
+      notices.push({bot:'overdue-notice', operatorId:recipient.id, chatId:recipient.chatId, clientId:client.id, since});
+    }
+    if (!notices.length) return;
+    state.queue.push(...notices);
+    try { save(); }
+    catch (error) {
+      state.queue.splice(-notices.length);
+      throw error;
+    }
+  }
+
   async function flush() {
     if(flushing){flushAgain=true;return;}
     flushing=true;
-    try{do{flushAgain=false;for (const item of [...state.queue]) {
+    try{do{flushAgain=false;
+    queueOverdueNotices();
+    for (const item of [...state.queue]) {
+      if (item.bot === 'overdue-notice') {
+        const recipient = overdueRecipient();
+        const client = state.clients[item.clientId];
+        if (!recipient || recipient.id !== item.operatorId || recipient.chatId !== item.chatId ||
+            !client || overdueSince(client, Date.now()) !== item.since) {
+          state.queue.splice(state.queue.indexOf(item), 1);
+          save();
+          continue;
+        }
+        if (item.retryAt > Date.now()) continue;
+        try {
+          await send('operator', recipient.chatId,
+            `BEREG · Прострочена відповідь
+${client.name} · ${client.provider || 'Telegram'}
+Звернення очікує відповіді в CRM.`);
+          client.overdueNotifiedSince = item.since;
+          state.queue.splice(state.queue.indexOf(item), 1);
+        } catch {
+          item.retryAt = Date.now() + 60000;
+        }
+        save();
+        continue;
+      }
       if(item.campaignId&&!state.subscriptions?.[item.clientId]?.consent){
         state.queue.splice(state.queue.indexOf(item),1);save();continue;
       }
@@ -492,16 +556,9 @@ function mountSupport(app, options) {
     }
     messages.sort((a,b)=>Date.parse(a.message.at)-Date.parse(b.message.at));
     const overdue=[];
-    const configured=Number(process.env.BEREG_REPLY_MINUTES||60);
-    const threshold=Number.isFinite(configured)&&configured>0?configured:60;
     if(req.panelUser.role!=='operator')for(const client of Object.values(support.state.clients)){
-      if(client.status==='closed')continue;
-      let waiting;
-      for(const message of client.history){
-        if(message.direction==='in')waiting||=message.at;
-        else if(message.direction==='out'&&!message.eventId&&!message.campaignId)waiting=null;
-      }
-      if(waiting&&cursor-Date.parse(waiting)>=threshold*60000)overdue.push({id:client.id,name:client.name,since:waiting});
+      const since = overdueSince(client, cursor);
+      if(since)overdue.push({id:client.id,name:client.name,since});
     }
     res.json({cursor,messages,overdue});
   });
@@ -602,6 +659,25 @@ function mountSupport(app, options) {
     try{res.json(await support.diagnostics());}catch(error){res.status(502).json({error:error.message});}
   });
   const superadminOnly = (req,res,next) => req.panelUser.role === 'superadmin' ? next() : res.status(403).json({error:'Пароли Telegram-операторов доступны только суперадминистратору.'});
+  const overdueSettings = () => {
+    const selected = support.state.overdueRecipient;
+    const linked = support.state.operators.filter(operator => operator.enabled && operator.chatId);
+    return {
+      operatorId: linked.find(operator => operator.id === selected?.id && operator.chatId === selected.chatId)?.id || '',
+      operators: linked.map(({id, name}) => ({id, name}))
+    };
+  };
+  app.get('/api/telegram/overdue-settings', superadminOnly, (req,res) => res.json(overdueSettings()));
+  app.put('/api/telegram/overdue-settings', superadminOnly, (req,res) => {
+    const operatorId = req.body?.operatorId;
+    const operator = support.state.operators.find(person => person.id === operatorId && person.enabled && person.chatId);
+    if (operatorId !== '' && !operator) return res.status(400).json({error:'Виберіть отримувача, який увійшов у Telegram-бот команди.'});
+    const previous = support.state.overdueRecipient;
+    support.state.overdueRecipient = operator ? {id:operator.id, chatId:operator.chatId} : null;
+    try { support.save(); }
+    catch (error) { support.state.overdueRecipient = previous; throw error; }
+    res.json(overdueSettings());
+  });
   app.post('/api/telegram/operators', superadminOnly, (req,res)=> { try { res.json(support.addOperator(req.body.name)); } catch(e) { res.status(400).json({error:e.message}); } });
   app.get('/api/telegram/operators/:id/password', superadminOnly, (req,res)=> {
     try { res.json({password:support.getOperatorPassword(req.params.id)}); } catch(e) { res.status(400).json({error:e.message}); }

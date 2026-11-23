@@ -54,7 +54,7 @@
   }
   syncSidebarGroups(user.role==='operator'?'inbox':(document.querySelector('.section-panel.active')?.id||'dashboard'));
   $('logoutBtn').onclick=async()=>{await post('/api/auth/logout');location.replace('/login');};
-  function navigate(target){document.querySelectorAll('.section-panel').forEach(e=>e.classList.toggle('active',e.id===target));document.querySelectorAll('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.target===target));syncSidebarGroups(target);if(target==='inbox'||target==='team-access'){$('pageTitle').textContent=target==='inbox'?'Обращения':'Команда и доступ';document.querySelector('.topbar-actions').hidden=true;}if(target==='response-templates'){$('pageTitle').textContent='Шаблоны ответов';document.querySelector('.topbar-actions').hidden=true;}if(target==='content')$('pageTitle').textContent='Контент';if(target==='calendar')$('pageTitle').textContent='Календарь';if(target==='employees')$('pageTitle').textContent='Employees';document.body.classList.remove('mobile-menu-open');if(target==='clients'){loadCrm();$('pageTitle').textContent='Клиенты';document.querySelector('.topbar-actions').hidden=true;}placeCaseTaskPanel();if(target==='inbox'){if(user.role!=='operator'&&!crmRecords.length)void loadCrm();loadInbox();}if(target==='team-access')loadUsers();if(target==='content')loadContentPlan();if(target==='calendar')loadPublicationCalendar();}
+  function navigate(target){document.querySelectorAll('.section-panel').forEach(e=>e.classList.toggle('active',e.id===target));document.querySelectorAll('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.target===target));syncSidebarGroups(target);if(target==='inbox'||target==='team-access'){$('pageTitle').textContent=target==='inbox'?'Обращения':'Команда и доступ';document.querySelector('.topbar-actions').hidden=true;}if(target==='response-templates'){$('pageTitle').textContent='Шаблоны ответов';document.querySelector('.topbar-actions').hidden=true;}if(target==='content')$('pageTitle').textContent='Контент';if(target==='calendar')$('pageTitle').textContent='Календарь';if(target==='employees')$('pageTitle').textContent='Employees';document.body.classList.remove('mobile-menu-open');if(target==='clients'){loadCrm();$('pageTitle').textContent='Клиенты';document.querySelector('.topbar-actions').hidden=true;}placeCaseTaskPanel();if(target==='inbox'){if(user.role!=='operator'&&!crmRecords.length)void loadCrm();loadInbox();}if(target==='team-access'){loadUsers();loadOverdueSettings();}if(target==='content')loadContentPlan();if(target==='calendar')loadPublicationCalendar();}
   document.querySelectorAll('.nav-item').forEach(e=>e.addEventListener('click',()=>{if(!e.hidden)navigate(e.dataset.target);}));
   let crmRecords=[],crmId=null,crmAcknowledgedApplications=new Set();
   const crmAcknowledgementKey='bereg_crm_acknowledged_'+user.id;
@@ -671,7 +671,33 @@
   async function loadUsers(){if(user.role!=='superadmin')return;try{const [u,t]=await Promise.all([api('/api/users'),api('/api/telegram/status')]);$('workspaceUsers').innerHTML=u.users.map(x=>`<div class="user-row"><div><strong>${esc(x.name)}</strong><small>${esc(x.username)} · ${roles[x.role]} · ${x.enabled?'Активен':'Отключён'}</small></div>${x.role==='superadmin'?'<span class="owner-pill">Владелец</span>':`<div><button class="ghost-btn" data-reset="${x.id}">Новый пароль</button><button class="ghost-btn" data-toggle="${x.id}">${x.enabled?'Отключить':'Включить'}</button></div>`}</div>`).join('');$('operatorLink').innerHTML='<option value="">Новый Telegram-оператор — создать автоматически</option>'+t.operators.filter(o=>o.enabled&&!u.users.some(x=>x.enabled&&x.operatorId===o.id)).map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');$('workspaceUsers').querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{try{await post('/api/users/'+b.dataset.toggle+'/toggle');await loadUsers();}catch(e){$('newUserResult').textContent=e.message;}});$('workspaceUsers').querySelectorAll('[data-reset]').forEach(b=>b.onclick=async()=>{try{const d=await post('/api/users/'+b.dataset.reset+'/reset-password');$('newUserResult').textContent='Новый пароль: '+d.password+'. Предыдущие сеансы завершены. Сохраните пароль.';}catch(e){$('newUserResult').textContent=e.message;}});}catch(e){$('newUserResult').textContent=e.message;}}
   $('createUserForm').role.onchange=e=>{$('operatorLinkLabel').hidden=e.target.value!=='operator';$('operatorLink').required=false;};
   $('createUserForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button');b.disabled=true;let createdTelegramOperator=null;try{const payload=Object.fromEntries(new FormData(f));if(payload.role==='operator'){const existing=await api('/api/users');if(existing.users.some(item=>item.username.toLowerCase()===payload.username.toLowerCase()))throw Error('Этот логин уже существует.');if(!payload.operatorId)createdTelegramOperator=await post('/api/telegram/operators',{name:payload.name});if(createdTelegramOperator)payload.operatorId=createdTelegramOperator.id;}const d=await post('/api/users',payload);$('newUserResult').textContent='Аккаунт CRM создан. Логин: '+d.user.username+' · пароль CRM: '+d.password+'. Сохраните его. '+(createdTelegramOperator?'Доступ в Telegram-бот: /login '+createdTelegramOperator.password+'. Передайте сотруднику оба пароля.':'');f.reset();$('operatorLinkLabel').hidden=true;$('operatorLink').required=false;await loadUsers();}catch(e){$('newUserResult').textContent=e.message+(createdTelegramOperator?' Telegram-оператор уже создан. Его вход: /login '+createdTelegramOperator.password+'. Выберите его в списке и повторите создание аккаунта.':'');await loadUsers();}finally{b.disabled=false;}};
-  $('refreshUsers').onclick=loadUsers;
+  const overdueForm=$('overdueSettings'), overdueSelect=overdueForm.elements.operatorId;
+  const overdueSubmit=overdueForm.querySelector('button'), overdueStatus=$('overdueSettingsStatus');
+  function renderOverdueSettings({operatorId, operators}){
+    overdueSelect.replaceChildren(new Option('Вимкнено',''),
+      ...operators.map(operator=>new Option(operator.name,operator.id)));
+    overdueSelect.value=operatorId;
+    overdueSelect.disabled=overdueSubmit.disabled=false;
+  }
+  async function loadOverdueSettings(){
+    overdueSelect.disabled=overdueSubmit.disabled=true;
+    overdueStatus.textContent='';
+    try { renderOverdueSettings(await api('/api/telegram/overdue-settings')); }
+    catch(error) { overdueStatus.textContent=error.message; }
+  }
+  overdueForm.onsubmit=async event=>{
+    event.preventDefault();
+    overdueSubmit.disabled=true;
+    try {
+      renderOverdueSettings(await api('/api/telegram/overdue-settings',{
+        method:'PUT',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({operatorId:overdueSelect.value})
+      }));
+      overdueStatus.textContent='Збережено.';
+    } catch(error) { overdueStatus.textContent=error.message; }
+    finally { overdueSubmit.disabled=false; }
+  };
+  $('refreshUsers').onclick=()=>{loadUsers();loadOverdueSettings();};
   document.body.classList.remove('auth-loading','feature-loading');
   await Promise.all(modules.map(loadModule));
   if(user.role==='operator')navigate('inbox');pollInboxNotifications();
