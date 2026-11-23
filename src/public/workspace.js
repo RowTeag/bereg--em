@@ -590,7 +590,9 @@
   function renderTemplates(selectedId){
     templateSelect.replaceChildren(new Option('Выберите шаблон',''));
     for(const item of replyTemplates.filter(item=>item.language===templateLanguage.value)) {
-      templateSelect.add(new Option(item.title,item.id));
+      const option=new Option(item.title,item.id);
+      option.translate=false;
+      templateSelect.add(option);
     }
     templateSelect.value=selectedId||'';
     previewTemplate();
