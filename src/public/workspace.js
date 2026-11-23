@@ -300,19 +300,63 @@
   const supportedReplyLanguages=Object.keys(languageNames);
   const crmClientLanguage=document.querySelector('#crmForm [name="language"]');
   supportedReplyLanguages.forEach(code=>{if(!crmClientLanguage.querySelector(`option[value="${code}"]`)){const option=document.createElement('option');option.value=code;option.textContent=languageNames[code];crmClientLanguage.append(option);}});
-  const interfaceLanguage=()=>supportedReplyLanguages.includes(window.crmLanguage?.())?window.crmLanguage():'ru';
+  const interfaceLanguage=()=>supportedReplyLanguages.includes(window.crmLanguage?.())?window.crmLanguage():'uk';
   let replyLanguage=interfaceLanguage();
-  const clientLanguageLabel=code=>{const ui=window.crmLanguage?.()||'ru',label=languageNames[code]||({en:'Not selected',ru:'Не выбран',vi:'Chưa chọn'})[ui]||'Не выбран';return `${({en:'Client language',ru:'Язык клиента',vi:'Ngôn ngữ khách hàng'})[ui]||'Язык клиента'} · ${label}`;};
-  function renderList(){const q=$('inboxSearch').value.toLowerCase(),filter=$('inboxFilter').value;const visible=clients.filter(c=>(filter==='all'||(filter==='closed'?c.status==='closed':c.status!=='closed'))&&[c.name,c.id,c.contact,...c.history.map(h=>h.text)].join(' ').toLowerCase().includes(q));$('inboxList').innerHTML=visible.length?visible.map(c=>`<button class="inbox-item ${selected===c.id?'selected':''}" data-client="${esc(c.id)}" data-audit-dialog="${esc(c.id)}"><span class="client-initial source-${esc(c.provider||'telegram')}">${esc(c.name.slice(0,1))}</span><span><strong>${esc(c.name)} <i class="source-pill source-${esc(c.provider||'telegram')}">${esc(providerName(c))}</i></strong><small>${esc(c.history[c.history.length-1]?.text||'Нет сообщений')}</small><em>${stateLabel(c.status)} · ${esc(c.operatorName)} · ${esc(clientLanguageLabel(c.language))}</em></span></button>`).join(''):'<div class="workspace-empty">Обращений пока нет<small>Новые сообщения появятся здесь.</small></div>';$('inboxList').querySelectorAll('[data-client]').forEach(b=>b.onclick=()=>{selected=b.dataset.client;renderList();loadConversation(selected);});}
+  const clientLanguageLabel=code=>{const ui=window.crmLanguage?.()||'uk',label=languageNames[code]||({en:'Not selected',uk:'Не вибрано',vi:'Chưa chọn'})[ui]||'Не выбран';return `${({en:'Client language',uk:'Мова клієнта',vi:'Ngôn ngữ khách hàng'})[ui]||'Язык клиента'} · ${label}`;};
+  function renderList(){const q=$('inboxSearch').value.toLowerCase(),filter=$('inboxFilter').value;const visible=clients.filter(c=>(filter==='all'||(filter==='closed'?c.status==='closed':c.status!=='closed'))&&[c.name,c.id,c.contact,...c.history.map(h=>h.text)].join(' ').toLowerCase().includes(q));$('inboxList').innerHTML=visible.length?visible.map(c=>`<button class="inbox-item ${selected===c.id?'selected':''}" data-client="${esc(c.id)}" data-audit-dialog="${esc(c.id)}"><span class="client-initial source-${esc(c.provider||'telegram')}">${esc(c.name.slice(0,1))}</span><span><strong>${esc(c.name)} <i class="source-pill source-${esc(c.provider||'telegram')}">${esc(providerName(c))}</i></strong><small>${esc(c.history[c.history.length-1]?.text||'Нет сообщений')}</small><em>${stateLabel(c.status)} · ${esc(c.operatorName)} · ${esc(clientLanguageLabel(c.language))}</em></span></button>`).join(''):'<div class="workspace-empty">Обращений пока нет<small>Новые сообщения появятся здесь.</small></div>';$('inboxList').querySelectorAll('[data-client]').forEach(b=>b.onclick=()=>{openInboxChat(b.dataset.client);});}
+  const mobileInbox=matchMedia('(max-width: 760px)');
+  let mobileChatOpen=false;
+  const inboxDrafts=new Map();
+  function openInboxChat(id){
+    if(selected!==id){
+      const reply=$('inboxReply');
+      if(selected&&reply.value.trim())inboxDrafts.set(selected,{text:reply.value,template:insertedTemplate});
+      const draft=inboxDrafts.get(id);
+      reply.value=draft?.text||'';
+      insertedTemplate=draft?.template||null;
+      inboxDrafts.delete(id);
+      $('inboxStatus').textContent='';
+    }
+    selected=id;
+    mobileChatOpen=true;
+    renderList();
+    loadConversation(id);
+    if(mobileInbox.matches)$('inboxBack').focus();
+  }
+  $('inboxBack').onclick=()=>{
+    const previous=selected;
+    mobileChatOpen=false;
+    $('inbox').classList.remove('inbox-chat-open');
+    const item=[...$('inboxList').querySelectorAll('[data-client]')].find(button=>button.dataset.client===previous);
+    (item||$('inboxSearch')).focus();
+  };
   let inboxTeam;
   function renderDialogTools(client){
+    const host=$('inboxDialogTools');
     const tools=document.createElement('details'),summary=document.createElement('summary');
-    summary.textContent='Действия с диалогом и внутренние комментарии';tools.append(summary);
+    const body=document.createElement('div');
+    body.className='tool-body';
+    tools.open=host.dataset.dialogId===client.id&&Boolean(host.firstElementChild?.open);
+    host.dataset.dialogId=client.id;
+    summary.textContent='Действия с диалогом';
+    tools.append(summary,body);
+    function field(label,control,button){
+      const row=document.createElement('div');
+      row.className='inbox-tool-field';
+      const caption=document.createElement('label');
+      const text=document.createElement('span');
+      text.textContent=label;
+      caption.append(text,control);
+      button.type='button';
+      button.className='ghost-btn';
+      row.append(caption,button);
+      body.append(row);
+    }
     for(const note of client.notes||[]){
-      const line=document.createElement('p');line.textContent=note.by+' · '+new Date(note.at).toLocaleString()+' · '+note.text;tools.append(line);
+      const line=document.createElement('p');line.textContent=note.by+' · '+new Date(note.at).toLocaleString(document.documentElement.lang)+' · '+note.text;body.append(line);
     }
     const note=document.createElement('textarea'),add=document.createElement('button'),select=document.createElement('select'),move=document.createElement('button');
-    note.placeholder='Внутренний комментарий';note.maxLength=2000;add.textContent='Сохранить комментарий';move.textContent='Передать диалог';
+    note.rows=2;note.maxLength=2000;add.textContent='Сохранить комментарий';move.textContent='Передать диалог';
     select.add(new Option('Выберите сотрудника',''));
     tools.ontoggle=async()=>{
       if(!tools.open||select.options.length>1)return;
@@ -326,7 +370,8 @@
     }
     add.onclick=()=>{if(note.value.trim())manage({note:note.value});};
     move.onclick=()=>{if(select.value)manage({operatorId:select.value});};
-    tools.append(note,add,select,move);
+    field('Внутренний комментарий',note,add);
+    field('Ответственный сотрудник',select,move);
     if(!client.demo&&(client.transport==='chatwoot'||!client.provider||client.provider==='telegram')){
       const file=document.createElement('input'),send=document.createElement('button');
       file.type='file';send.textContent='Отправить файл клиенту';
@@ -337,11 +382,22 @@
           const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(Error('Ошибка чтения'));reader.onload=()=>resolve(reader.result.split(',')[1]);reader.readAsDataURL(item);});
           await post('/api/telegram/inbox/'+encodeURIComponent(client.id)+'/files',{name:item.name,base64});await loadInbox();
         }catch(error){$('inboxStatus').textContent=error.message;}finally{send.disabled=false;}
-      };tools.append(file,send);
+      };
+      const picker=document.createElement('span');
+      picker.className='inbox-file-picker';
+      const filename=document.createElement('span');
+      filename.textContent='Выбрать файл';
+      file.onchange=()=>{
+        filename.textContent=file.files[0]?.name||'Выбрать файл';
+        send.disabled=!file.files.length;
+      };
+      send.disabled=true;
+      picker.append(file,filename);
+      field('Вложение до 5 МБ',picker,send);
     }
-    $('inboxConversation').append(tools);
+    host.replaceChildren(tools);
   }
-  function renderConversation(){if(insertedTemplate&&insertedTemplate.dialogId!==selected){$('inboxReply').value='';insertedTemplate=null;}const c=clients.find(c=>c.id===selected);$('inboxReplyForm').hidden=!c;if(!c){$('inboxConversation').innerHTML='<div class="workspace-empty">Выберите обращение</div>';return;}if(c.loading){$('inboxConversation').innerHTML='<div class="workspace-empty">Загружаю переписку…</div>';return;}$('inboxConversation').dataset.auditDialog=c.id;$('inboxReplyForm').dataset.auditDialog=c.id;const sourceUrl=safeExternalUrl(c.sourceUrl);$('inboxConversation').innerHTML=`<div class="conversation-title"><div><h3>${esc(c.name)} <i class="source-pill source-${esc(c.provider||'telegram')}">${esc(providerName(c))}</i></h3>${c.contact?`<span>${esc(c.contact)}${sourceUrl?` · <a href="${esc(sourceUrl)}" target="_blank" rel="noopener">открыть диалог ↗</a>`:''}</span>`:''}<small class="client-language">${esc(clientLanguageLabel(c.language))}</small></div><span>${esc(c.operatorName)} · ${stateLabel(c.status)}</span></div><div class="message-list">${c.history.map(h=>`<div class="message ${h.direction==='out'?'outgoing':''}"><small>${h.direction==='out'?'Команда BEREG':providerName(c)}${h.direction==='in'&&h.sourceLanguage?` · ${esc(languageNames[h.sourceLanguage]||h.sourceLanguage)}`:''}</small><p>${esc(h.text)}</p>${h.originalText&&h.originalText!==h.text?`<details><summary>Исходное сообщение</summary><p>${esc(h.originalText)}</p></details>`:''}${(h.attachments||[]).map(f=>safeExternalUrl(f.url)?'<a href="'+esc(safeExternalUrl(f.url))+'" target="_blank" rel="noopener noreferrer">'+esc(f.name)+'</a>':'').join(' ')}${h.attachment?'<a download href="/api/telegram/inbox/'+encodeURIComponent(c.id)+'/files/'+encodeURIComponent(h.attachment.id)+'">'+esc(h.attachment.name)+'</a>':''}<time>${new Date(h.at).toLocaleString('ru-RU')}</time></div>`).join('')}</div>`;renderDialogTools(c);const title=$('inboxConversation').querySelector('.conversation-title');const addClient=document.createElement('button');addClient.type='button';addClient.className='ghost-btn';addClient.textContent='Добавить в клиентов';addClient.onclick=async()=>{addClient.disabled=true;try{const result=await post('/api/clients/from-inbox/'+encodeURIComponent(c.id));$('inboxStatus').textContent=result.existing?'Обращение уже связано с карточкой клиента.':'Клиент добавлен, обращение привязано к карточке.';if(user.role!=='operator'){await loadCrm();navigate('clients');await openCrm(result.client.id);}}catch(error){$('inboxStatus').textContent=error.message;}finally{addClient.disabled=false;}};title.append(addClient);const list=$('inboxConversation').querySelector('.message-list');list.scrollTop=list.scrollHeight;}
+  function renderConversation(){if(insertedTemplate&&insertedTemplate.dialogId!==selected){$('inboxReply').value='';insertedTemplate=null;}const c=clients.find(c=>c.id===selected);$('inbox').classList.toggle('inbox-chat-open',Boolean(c)&&mobileChatOpen);$('inboxReplyForm').hidden=!c||Boolean(c.loading);$('inboxDialogTools').hidden=!c||Boolean(c.loading);$('replyTemplates').hidden=Boolean(c?.loading);if(!c){$('inboxDialogTools').replaceChildren();$('replyTemplates').open=false;$('inboxConversation').innerHTML='<div class="workspace-empty">Выберите обращение</div>';return;}if(c.loading){$('inboxConversation').innerHTML='<div class="workspace-empty">Загружаю переписку…</div>';return;}$('inboxConversation').dataset.auditDialog=c.id;$('inboxReplyForm').dataset.auditDialog=c.id;const sourceUrl=safeExternalUrl(c.sourceUrl);$('inboxConversation').innerHTML=`<div class="conversation-title"><div><h3>${esc(c.name)} <i class="source-pill source-${esc(c.provider||'telegram')}">${esc(providerName(c))}</i></h3>${c.contact?`<span>${esc(c.contact)}${sourceUrl?` · <a href="${esc(sourceUrl)}" target="_blank" rel="noopener">открыть диалог ↗</a>`:''}</span>`:''}<small class="client-language">${esc(clientLanguageLabel(c.language))}</small></div><span>${esc(c.operatorName)} · ${stateLabel(c.status)}</span></div><div class="message-list">${c.history.map(h=>`<div class="message ${h.direction==='out'?'outgoing':''}"><small>${h.direction==='out'?'Команда BEREG':providerName(c)}${h.direction==='in'&&h.sourceLanguage?` · ${esc(languageNames[h.sourceLanguage]||h.sourceLanguage)}`:''}</small><p>${esc(h.text)}</p>${h.originalText&&h.originalText!==h.text?`<details><summary>Исходное сообщение</summary><p>${esc(h.originalText)}</p></details>`:''}${(h.attachments||[]).map(f=>safeExternalUrl(f.url)?'<a href="'+esc(safeExternalUrl(f.url))+'" target="_blank" rel="noopener noreferrer">'+esc(f.name)+'</a>':'').join(' ')}${h.attachment?'<a download href="/api/telegram/inbox/'+encodeURIComponent(c.id)+'/files/'+encodeURIComponent(h.attachment.id)+'">'+esc(h.attachment.name)+'</a>':''}<time>${new Date(h.at).toLocaleString(document.documentElement.lang)}</time></div>`).join('')}</div>`;renderDialogTools(c);const title=$('inboxConversation').querySelector('.conversation-title');const addClient=document.createElement('button');addClient.type='button';addClient.className='ghost-btn';addClient.textContent='Добавить в клиентов';addClient.onclick=async()=>{addClient.disabled=true;try{const result=await post('/api/clients/from-inbox/'+encodeURIComponent(c.id));$('inboxStatus').textContent=result.existing?'Обращение уже связано с карточкой клиента.':'Клиент добавлен, обращение привязано к карточке.';if(user.role!=='operator'){await loadCrm();navigate('clients');await openCrm(result.client.id);}}catch(error){$('inboxStatus').textContent=error.message;}finally{addClient.disabled=false;}};title.append(addClient);const list=$('inboxConversation').querySelector('.message-list');list.scrollTop=list.scrollHeight;}
   async function loadConversation(id){const client=clients.find(item=>item.id===id);if(!client)return;client.loading=true;if(selected===id)renderConversation();try{const result=await api('/api/telegram/inbox/'+encodeURIComponent(id)+'?language='+encodeURIComponent(replyLanguage));const index=clients.findIndex(item=>item.id===id);if(index>=0)clients[index]=result.client;if(selected===id)renderConversation();}catch(error){client.loading=false;if(selected===id){$('inboxStatus').textContent=error.message;renderConversation();}}}
   let lastSyncedOperatorLanguage='';async function syncOperatorLanguage(){if(user.role!=='operator')return;const language=replyLanguage;if(!supportedReplyLanguages.includes(language)||language===lastSyncedOperatorLanguage)return;try{await api('/api/telegram/operator-language',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({language})});lastSyncedOperatorLanguage=language;}catch(error){$('inboxStatus').textContent=error.message;}}
   document.addEventListener('crm-language-change',()=>{replyLanguage=interfaceLanguage();lastSyncedOperatorLanguage='';renderCrm();renderList();renderConversation();syncOperatorLanguage();if($('inbox').classList.contains('active'))loadInbox();});
@@ -385,8 +441,9 @@
     if(reply.value.trim()){templateStatus.textContent='Очистите поле ответа перед вставкой или скопируйте шаблон.';return;}
     reply.value=templateText();
     insertedTemplate={dialogId:selected,language:templateLanguage.value};
+    templatePanel.open=false;
     reply.focus();
-    templateStatus.textContent='Текст вставлен. Проверьте его перед отправкой.';
+    $('inboxStatus').textContent='Текст вставлен. Проверьте его перед отправкой.';
   };
   $('editReplyTemplate').onclick=()=>{
     const item=currentTemplate();
