@@ -208,3 +208,55 @@ body:has(.login-layout) {
   outline: 2px solid var(--desk-accent);
   outline-offset: 3px;
 }
+
+#crmList .inbox-item small {
+  max-width: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+  color: var(--desk-muted) !important;
+}
+
+#crmList .inbox-item.selected { background: #274a50 !important; }
+#crmTitle { scroll-margin-top: 1rem; }
+
+.crm-client-test {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--desk-line);
+  border-radius: 12px;
+}
+
+.crm-client-test summary { cursor: pointer; }
+.crm-client-test[open] summary { margin-bottom: 0.75rem; }
+
+@media (max-width: 760px) {
+  #clients .inbox-toolbar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) !important;
+    margin-bottom: 12px;
+  }
+
+  #clients .inbox-toolbar > input { grid-column: 1 / -1 !important; }
+  #clients .inbox-toolbar > button { grid-column: auto !important; min-height: 44px; }
+
+  #crmList {
+    max-height: min(22rem, 45svh);
+    padding: 6px !important;
+    scrollbar-gutter: stable;
+  }
+
+  #crmList + article { padding: 16px !important; }
+  .app-shell .main-panel .ai-box { padding: 14px; }
+  .ai-box #aiPostLanguage { width: 100%; }
+}
+
+#caseTasks:not(:empty) { display: grid; gap: 10px; margin-block: 12px; }
+#caseTasks article {
+  padding: 12px;
+  border: 1px solid var(--desk-line);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+#caseTasks article p { margin-block: 6px; }
+#caseTasks form { margin-top: 10px; }
+#caseTaskForm button { min-height: 44px; }

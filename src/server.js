@@ -1472,7 +1472,9 @@ const telegramSupport = require('./lib/telegram-support').mountSupport(app, {
   webhookSecret: process.env.BEREG_TG_WEBHOOK_SECRET || '',
   webhookBaseUrl: process.env.BEREG_PUBLIC_URL || '',
   autoReply:(client,event,value,queue)=>require('./lib/reply-templates').autoReply(path.join(privateDirectory,'crm'),client,event,value,queue),
-  externalFileSender:(client,attachment,bytes)=>chatwootBridge.sendFile(client,attachment,bytes),
+  externalFileSender:(client,attachment,bytes)=>client.transport==='chatwoot'
+    ?chatwootBridge.sendFile(client,attachment,bytes):metaInbox.sendFile(client,attachment,bytes),
+  externalFileAllowed:metaInbox.acceptsFile,
   externalSender: (client,text)=>client.transport==='chatwoot'?chatwootBridge.sendMessage(client,text):client.transport==='viber'?viberInbox.sendMessage(client,text):metaInbox.sendMessage(client,text)
 });
 app.locals.beregFlushSupportQueue = telegramSupport.flush;
@@ -1488,7 +1490,7 @@ require('./lib/casework').mountCasework(app,{directory:path.join(privateDirector
 require('./lib/reply-templates').mountReplyTemplates(app, path.join(privateDirectory, 'crm'));
 require('./lib/business').mountBusiness(app,{directory:path.join(privateDirectory,'business')});
 require('./lib/content-plan').mountContentPlan(app,{directory:path.join(privateDirectory,'content-plan')});
-metaInbox.setIngest(event=>telegramSupport.ingestExternal(event),(provider,externalId,language)=>telegramSupport.setClientLanguage(provider,externalId,language));
+metaInbox.setIngest(event=>telegramSupport.ingestExternal(event),(provider,externalId,language)=>telegramSupport.setClientLanguage(provider,externalId,language),telegramSupport.files.receiveResponse);
 chatwootBridge.setIngest(event=>telegramSupport.ingestExternal(event));
 viberInbox.setIngest(event=>telegramSupport.ingestExternal(event));
 metaInbox.mountAdmin(app);

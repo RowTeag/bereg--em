@@ -17,6 +17,7 @@ function createMetaInbox({directory,graphVersion='v26.0',facebookAuth,env=proces
   if(!fs.existsSync(file))save();
   let ingest=async()=>{};
   let setCustomerLanguage=()=>{};
+  let receiveAttachment;
   const baseUrl=String(env.APP_BASE_URL||env.RAILWAY_PUBLIC_DOMAIN&&`https://${env.RAILWAY_PUBLIC_DOMAIN}`||env.BEREG_PUBLIC_URL||'').replace(/\/$/,'');
   const appSecret=()=>String(facebookAuth.appSecret?.()||env.FACEBOOK_APP_SECRET||'').trim();
   const page=()=>facebookAuth.peek();
@@ -39,7 +40,7 @@ function createMetaInbox({directory,graphVersion='v26.0',facebookAuth,env=proces
   const facebookPublicUrl=()=>{const id=String(page().pageId||'').trim();return id?`https://m.me/${encodeURIComponent(id)}`:'';};
   async function graph(endpoint,{method='GET',token,body}={}){
     const url=`https://graph.facebook.com/${graphVersion}/${endpoint}`;
-    const response=await fetchImpl(url,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
+    const response=await fetchImpl(url,{method,headers:{Authorization:`Bearer ${token}`,...(body instanceof FormData ? {} : {'Content-Type':'application/json'})},body:body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,signal:AbortSignal.timeout(20000)});
     const data=await response.json().catch(()=>null);if(!response.ok||data?.error)throw new Error(data?.error?.message||`Meta API: ${response.status}`);return data;
   }
   function signatureValid(req){
@@ -134,9 +135,18 @@ function createMetaInbox({directory,graphVersion='v26.0',facebookAuth,env=proces
       if(['BEREG_SERVICES','BEREG_DOCUMENTS','BEREG_TRANSLATION'].includes(payloadId)||['services','documents','translation','услуги','документы','перевод','послуги','документи','переклад','szolgáltatások','fordítás'].includes(normalized)||normalized===w.servicesButton.toLowerCase()){
         await graph(`${encodeURIComponent(page().pageId)}/messages`,{method:'POST',token:page().accessToken,body:{recipient:{id:psid},messaging_type:'RESPONSE',message:{text:w.services+'\n\n'+w.contacts}}});continue;
       }
-      const text=rawText.trim();if(!text)continue;
+      const attachments = [];
+      for (const item of (event.message?.attachments || []).slice(0, 10)) {
+        try {
+          const url = new URL(item.payload?.url);
+          if (url.protocol === 'https:' && ['image','video','audio','file'].includes(item.type)) {
+            attachments.push({url:url.href, name:'Вкладення Facebook · ' + item.type});
+          }
+        } catch {}
+      }
+      const text=rawText.trim() || attachments.map(item => item.name).join(', ');if(!text)continue;
       const pageId=String(event.recipient?.id||page().pageId||'');
-      await ingest({provider:'facebook',externalId:psid,name:await facebookName(psid)||'Клиент Facebook',contact:psid,sourceUrl:`https://business.facebook.com/latest/inbox/all?asset_id=${encodeURIComponent(pageId)}&selected_item_id=${encodeURIComponent(psid)}`,text,sourceId:String(event.message?.mid||event.timestamp||''),language:languageFor('facebook',psid)});
+      await ingest({provider:'facebook',externalId:psid,name:await facebookName(psid)||'Клиент Facebook',contact:psid,sourceUrl:`https://business.facebook.com/latest/inbox/all?asset_id=${encodeURIComponent(pageId)}&selected_item_id=${encodeURIComponent(psid)}`,text,attachments,sourceId:String(event.message?.mid||event.timestamp||''),language:languageFor('facebook',psid)});
       config.activity.facebook={lastInboundAt:new Date().toISOString(),lastSender:psid};save();
       await maybeWelcome('facebook',psid);
     }
@@ -153,9 +163,12 @@ function createMetaInbox({directory,graphVersion='v26.0',facebookAuth,env=proces
         if(actionId==='bereg_services'||actionId==='bereg_contacts'||incoming.trim().toLowerCase()===w.servicesButton.toLowerCase()||incoming.trim().toLowerCase()===w.contactsButton.toLowerCase()){
           await handleWhatsappMenu(waId,actionId||incoming);continue;
         }
-        const text=actionId==='bereg_operator'?w.operator:incoming;if(!text.trim())continue;
+        const media = ['image','video','audio','document','sticker'].includes(message.type) ? message[message.type] : null;
+        const text=actionId==='bereg_operator'?w.operator:incoming || media?.caption || (media ? 'Вкладення WhatsApp' : '');
+        if(!text.trim())continue;
+        const attachment = media && receiveAttachment ? await receiveWhatsApp(media, message.type).catch(() => null) : null;
         const contact=(value.contacts||[]).find(x=>String(x.wa_id)===waId);
-        await ingest({provider:'whatsapp',externalId:waId,name:contact?.profile?.name||'Клиент WhatsApp',contact:`+${waId}`,sourceUrl:`https://wa.me/${waId.replace(/\D/g,'')}`,text,sourceId:String(message.id||''),language:languageFor('whatsapp',waId)});
+        await ingest({provider:'whatsapp',externalId:waId,name:contact?.profile?.name||'Клиент WhatsApp',contact:`+${waId}`,sourceUrl:`https://wa.me/${waId.replace(/\D/g,'')}`,text,attachment,sourceId:String(message.id||''),language:languageFor('whatsapp',waId)});
         config.activity.whatsapp={lastInboundAt:new Date().toISOString(),lastSender:waId};save();
         await maybeWelcome('whatsapp',waId);
         const currentWords=wordsFor('whatsapp',waId);
@@ -163,6 +176,59 @@ function createMetaInbox({directory,graphVersion='v26.0',facebookAuth,env=proces
       }
     }
   }
+  const mediaFormats = {
+    '.jpg':['image','image/jpeg'], '.jpeg':['image','image/jpeg'], '.png':['image','image/png'],
+    '.mp4':['video','video/mp4'], '.3gp':['video','video/3gpp'], '.mp3':['audio','audio/mpeg'],
+    '.ogg':['audio','audio/ogg'], '.aac':['audio','audio/aac'], '.amr':['audio','audio/amr'],
+    '.m4a':['audio','audio/mp4'], '.pdf':['document','application/pdf'], '.txt':['document','text/plain'],
+    '.doc':['document','application/msword'], '.xls':['document','application/vnd.ms-excel'],
+    '.docx':['document','application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    '.xlsx':['document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+  };
+  async function receiveWhatsApp(media, type) {
+    if (!/^\d+$/.test(media.id || '') || !waToken()) return null;
+    const token = waToken();
+    const info = await graph(encodeURIComponent(media.id), {token});
+    if (Number(info.file_size) > 5 * 1024 * 1024) return null;
+    const url = new URL(info.url);
+    if (url.origin !== 'https://lookaside.fbsbx.com' || url.username || url.password) return null;
+    const extension = Object.keys(mediaFormats).find(ext => mediaFormats[ext][1] === info.mime_type?.split(';')[0]);
+    const response = await fetchImpl(url, {headers:{Authorization:`Bearer ${token}`}, signal:AbortSignal.timeout(20000), redirect:'error'});
+    return receiveAttachment(response, media.filename || type + (extension || ''));
+  }
+
+  async function sendFile(client, attachment, bytes) {
+    const format = mediaFormats[path.extname(attachment.name).toLowerCase()];
+    const [type, mime] = format || ['document','application/octet-stream'];
+    const file = new Blob([bytes], {type:mime});
+    const form = new FormData();
+    if (client.provider === 'facebook') {
+      const token = page().accessToken;
+      if (!token) throw Error('Facebook не підключено.');
+      form.set('recipient', JSON.stringify({id:client.externalId}));
+      form.set('messaging_type','RESPONSE');
+      form.set('message', JSON.stringify({attachment:{type:type === 'document' ? 'file' : type, payload:{is_reusable:false}}}));
+      form.set('filedata', file, attachment.name);
+      await graph(`${encodeURIComponent(page().pageId)}/messages`, {method:'POST', token, body:form});
+      return;
+    }
+    const token = waToken(), phoneId = waPhoneId();
+    if (!token || !phoneId) throw Error('WhatsApp не підключено.');
+    if (!format) throw Error('Формат файлу не підтримується у WhatsApp.');
+    form.set('messaging_product','whatsapp');
+    form.set('file',file,attachment.name);
+    const uploaded = await graph(`${encodeURIComponent(phoneId)}/media`, {method:'POST', token, body:form});
+    if (!uploaded?.id) throw Error('WhatsApp не підтвердив завантаження файлу.');
+    const media = {id:uploaded.id};
+    if (type === 'document') media.filename = attachment.name;
+    await graph(`${encodeURIComponent(phoneId)}/messages`, {method:'POST', token,
+      body:{messaging_product:'whatsapp', to:client.externalId, type, [type]:media}});
+  }
+  function acceptsFile(client, name) {
+    if (client.provider === 'facebook') return Boolean(page().accessToken && page().pageId);
+    return Boolean(waToken() && waPhoneId() && Object.hasOwn(mediaFormats, path.extname(name).toLowerCase()));
+  }
+
   async function sendMessage(client,text){
     if(client.provider==='facebook'){
       const token=page().accessToken;if(!token)throw new Error('Facebook Page Access Token не подключён.');
@@ -214,6 +280,6 @@ function createMetaInbox({directory,graphVersion='v26.0',facebookAuth,env=proces
     app.put('/api/meta-inbox/whatsapp',owner,(req,res)=>{config.whatsapp={phoneNumberId:String(req.body.phoneNumberId||'').trim().slice(0,40),businessAccountId:String(req.body.businessAccountId||'').trim().slice(0,40),displayPhoneNumber:String(req.body.displayPhoneNumber||'').trim().slice(0,40),accessToken:String(req.body.accessToken||'').trim()||config.whatsapp.accessToken};save();res.json({ok:true});});
     app.post('/api/meta-inbox/test',owner,async(req,res)=>{try{await ingest({provider:req.body.provider==='whatsapp'?'whatsapp':'facebook',externalId:'demo-'+Date.now(),name:'Тестовый клиент',contact:req.body.provider==='whatsapp'?'+36 30 123 4567':'Facebook Messenger',sourceUrl:req.body.provider==='whatsapp'?'https://wa.me/36301234567':'https://business.facebook.com/latest/inbox/all',text:'Тестовое сообщение: нужна помощь с документами в Венгрии',sourceId:crypto.randomUUID(),demo:true});res.json({ok:true});}catch(error){res.status(500).json({error:error.message});}});
   }
-  return{mountWebhook,mountAdmin,setIngest:(fn,setLanguage)=>{ingest=fn;if(setLanguage)setCustomerLanguage=setLanguage;},sendMessage,handle,diagnostics,subscribeFacebook,subscribeWhatsapp,status:()=>config};
+  return{mountWebhook,mountAdmin,setIngest:(fn,setLanguage,receive)=>{ingest=fn;if(setLanguage)setCustomerLanguage=setLanguage;receiveAttachment=receive;},sendFile,acceptsFile,sendMessage,handle,diagnostics,subscribeFacebook,subscribeWhatsapp,status:()=>config};
 }
 module.exports={createMetaInbox};

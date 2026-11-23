@@ -880,7 +880,7 @@ generateAiBtn.addEventListener('click', async () => {
         length: aiLength.value,
         goal: aiGoal.value,
         audience: aiAudience.value,
-        language: aiPostLanguage?.value || 'ru'
+        language: aiPostLanguage?.value || 'uk'
       })
     });
 
