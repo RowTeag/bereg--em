@@ -70,7 +70,9 @@ function mountPanelAuth(app,{directory,onLogin=()=>{},onLogout=()=>{}}) {
         ||(method==='POST'&&['/api/posts','/api/youtube/videos','/api/ai/post','/api/growth/channel/publish','/api/tiktok/publish'].includes(req.path));
       const templateAccess=method==='GET'&&req.path==='/api/reply-templates';
       const contentPlanAccess=req.path.startsWith('/api/content-plan')&&['GET','POST','PUT','DELETE'].includes(req.method.toUpperCase());
-      if(!(req.path.startsWith('/api/auth/')||inboxAccess||publishingAccess||contentPlanAccess||templateAccess||(!req.path.startsWith('/api/')&&!req.path.startsWith('/generated/'))))return res.status(403).json({error:'Этот раздел недоступен вашей роли.'});
+      const staffTaskAccess=(method==='GET'&&req.path==='/api/casework/my-tasks')||
+        (method==='POST'&&/^\/api\/casework\/tasks\/[^/]+\/complete$/.test(req.path));
+      if(!(staffTaskAccess||req.path.startsWith('/api/auth/')||inboxAccess||publishingAccess||contentPlanAccess||templateAccess||(!req.path.startsWith('/api/')&&!req.path.startsWith('/generated/'))))return res.status(403).json({error:'Этот раздел недоступен вашей роли.'});
     }
     if(user.role==='admin' && ((req.path==='/api/settings'&&req.method!=='GET') || req.path==='/api/youtube/connect' || req.path==='/api/youtube/oauth/callback' || req.path.startsWith('/api/facebook/config') || req.path==='/api/facebook/connect' || req.path==='/api/facebook/oauth/callback'))return res.status(403).json({error:'Настройки подключений доступны только владельцу.'});
     next();

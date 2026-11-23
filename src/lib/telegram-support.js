@@ -202,7 +202,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     client.history.push({ direction:'out', text, operatorId:operator.id, at:new Date().toISOString() });
     state.queue.push({ bot:client.transport==='chatwoot'||client.provider&&client.provider!=='telegram'?'external':'client',clientId,text,operatorChatId:id,sourceLanguage:language }); save();
   }
-  function ingestExternal({provider,attachments=[],transport,externalId,name,contact,sourceUrl,text,sourceId,demo=false,language}) {
+  function ingestExternal({provider,attachments=[],attachment,transport,externalId,name,contact,sourceUrl,text,sourceId,demo=false,language}) {
     if(!(transport==='chatwoot'?['facebook','whatsapp','instagram','email','viber','chatwoot','telegram']:transport==='viber'?['viber']:['facebook','whatsapp']).includes(provider))throw new Error('Неизвестный канал обращения.');
     const legacyId=`ext:${provider}:${externalId}`;
     const id=state.clients[legacyId]?.transport===transport||(!state.clients[legacyId]&&transport!=='chatwoot')?legacyId:
@@ -211,7 +211,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     client.name=name||client.name;client.contact=contact||client.contact;client.sourceUrl=sourceUrl||client.sourceUrl;client.externalId=String(externalId);client.transport=transport||client.transport||'meta';client.language=language||client.language||null;client.demo=Boolean(demo);
     if(client.history.some(item=>item.sourceId===sourceId&&sourceId))return client;
     if(client.status==='closed')client.status='new';assign(client);
-    client.history.push({direction:'in',sourceId,attachments,text:String(text).slice(0,3500),translations:{},at:new Date().toISOString(),provider});
+    client.history.push({direction:'in',sourceId,attachments,attachment:attachment || undefined,text:String(text).slice(0,3500),translations:{},at:new Date().toISOString(),provider});
     state.queue.push({bot:'operator',clientId:id,text:String(text).slice(0,3500),incomingId:sourceId});
     if(client.history.filter(h=>h.direction==='in').length===1)autoReply?.(client,'first','',state.queue);
     autoReply?.(client,'phrase',text,state.queue);save();
@@ -222,6 +222,37 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     const client=state.clients[`ext:${provider}:${externalId}`];if(!client)return;
     client.language=language;save();
   }
+  function overdueReplies(now = Date.now()) {
+    const minutes = Number(process.env.BEREG_REPLY_MINUTES || 60);
+    const threshold = (Number.isFinite(minutes) && minutes > 0 ? minutes : 60) * 60000;
+    const overdue = [];
+    for (const client of Object.values(state.clients)) {
+      if (client.demo || client.status === 'closed') continue;
+      let waiting;
+      for (const message of client.history) {
+        if (message.direction === 'in') waiting ||= message.at;
+        else if (message.direction === 'out' && !message.eventId && !message.campaignId) waiting = null;
+      }
+      if (waiting && now - Date.parse(waiting) >= threshold) {
+        overdue.push({id:client.id, name:client.name, since:waiting});
+      }
+    }
+    return overdue;
+  }
+
+  function enqueueStaffNotice(id, chatId, text) {
+    state.staffEvents ||= {};
+    if (state.staffEvents[id]) return;
+    state.staffEvents[id] = true;
+    state.queue.push({bot:'staff-notice', chatId, text});
+    try { save(); }
+    catch (error) {
+      state.queue.pop();
+      delete state.staffEvents[id];
+      throw error;
+    }
+  }
+
   async function flush() {
     if(flushing){flushAgain=true;return;}
     flushing=true;
@@ -230,6 +261,16 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
         state.queue.splice(state.queue.indexOf(item),1);save();continue;
       }
       if (item.retryAt > Date.now()) continue;
+      if (item.bot === 'staff-notice') {
+        try {
+          await send('operator', item.chatId, item.text);
+          state.queue.splice(state.queue.indexOf(item), 1);
+        } catch {
+          item.retryAt = Date.now() + 60000;
+        }
+        save();
+        continue;
+      }
       const client = state.clients[item.clientId];
       assign(client); save();
       const operator = state.operators.find(o => o.id === client.operatorId && o.enabled);
@@ -243,7 +284,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
           record.delivery='accepted';state.queue.splice(state.queue.indexOf(item),1);save();continue;
         }
         if(item.attachment){
-          if(client.transport==='chatwoot')await externalFileSender(client,item.attachment,files.bytes(item.attachment.id));
+          if(client.transport==='chatwoot'||['facebook','whatsapp'].includes(client.provider))await externalFileSender(client,item.attachment,files.bytes(item.attachment.id));
           else await files.send(client.id,item.attachment);
           state.queue.splice(state.queue.indexOf(item),1);save();continue;
         }
@@ -413,7 +454,7 @@ function createSupport({ directory, tokens = {}, api: customApi, externalSender,
     for(let index=0;index<pending.length;index+=4){await Promise.all(pending.slice(index,index+4).map(async item=>{item.translations[language]=await translateMessage(item.text,language,item.sourceLanguage||client.language);}));save();}
     return {...client,history:client.history.map(item=>({...item,originalText:item.text,text:item.direction==='in'?(item.translations?.[language]||item.text):item.text}))};
   }
-  return { files, start, snapshot, diagnostics, addOperator, getOperatorPassword, setOperatorPassword, disable, handle, handleWebhook, configureWebhooks, flush, ingestExternal, setClientLanguage, sendApplicationDocument, prepareHistory, state, save, translate:tr };
+  return { files, start, snapshot, diagnostics, addOperator, getOperatorPassword, setOperatorPassword, disable, handle, handleWebhook, configureWebhooks, flush, ingestExternal, setClientLanguage, sendApplicationDocument, enqueueStaffNotice, overdueReplies, prepareHistory, state, save, translate:tr };
 }
 function mountSupport(app, options) {
   const support = createSupport(options);
@@ -451,18 +492,7 @@ function mountSupport(app, options) {
       }
     }
     messages.sort((a,b)=>Date.parse(a.message.at)-Date.parse(b.message.at));
-    const overdue=[];
-    const configured=Number(process.env.BEREG_REPLY_MINUTES||60);
-    const threshold=Number.isFinite(configured)&&configured>0?configured:60;
-    if(req.panelUser.role!=='operator')for(const client of Object.values(support.state.clients)){
-      if(client.status==='closed')continue;
-      let waiting;
-      for(const message of client.history){
-        if(message.direction==='in')waiting||=message.at;
-        else if(message.direction==='out'&&!message.eventId&&!message.campaignId)waiting=null;
-      }
-      if(waiting&&cursor-Date.parse(waiting)>=threshold*60000)overdue.push({id:client.id,name:client.name,since:waiting});
-    }
+    const overdue = req.panelUser.role === 'operator' ? [] : support.overdueReplies(cursor);
     res.json({cursor,messages,overdue});
   });
   app.get('/api/telegram/inbox',(req,res)=>{
@@ -492,9 +522,12 @@ function mountSupport(app, options) {
   app.post('/api/telegram/inbox/:id/files',(req,res)=>{
     const c=support.state.clients[req.params.id];
     if(!c||!canSee(req,c))return res.sendStatus(404);
-    if(c.demo||(c.transport!=='chatwoot'&&c.provider&&c.provider!=='telegram'))return res.status(400).json({error:'Канал не подключён для отправки файлов.'});
+    if(c.demo||(c.transport!=='chatwoot'&&c.provider&&!['telegram','facebook','whatsapp'].includes(c.provider)))return res.status(400).json({error:'Канал не подключён для отправки файлов.'});
     const {base64,name}=req.body;
     if(typeof base64!=='string'||base64.length>6990508||typeof name!=='string'||!name.trim())return res.status(400).json({error:'Проверьте файл (до 5 МБ).'});
+    if(c.transport !== 'chatwoot' && ['facebook','whatsapp'].includes(c.provider) && !options.externalFileAllowed?.(c,name)) {
+      return res.status(400).json({error:'Канал не підключено або формат файлу не підтримується.'});
+    }
     const bytes=Buffer.from(base64,'base64');
     if(!bytes.length||bytes.length>5242880||bytes.toString('base64')!==base64)return res.status(400).json({error:'Некорректный файл.'});
     const attachment=support.files.persist(bytes,name);

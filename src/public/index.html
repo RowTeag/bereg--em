@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,12 +8,12 @@
   <link rel="stylesheet" href="/workspace.css?v=9" />
     <link rel="stylesheet" href="/crm-notice.css?v=1" />
     <link rel="stylesheet" href="/inbox-notifications.css?v=2" />
-    <link rel="stylesheet" href="/content-plan.css?v=1" />
+    <link rel="stylesheet" href="/content-plan.css?v=2" />
     <link rel="stylesheet" href="/business.css?v=1" />
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
   <link rel="stylesheet" href="/crm-tests.css">
-    <link rel="stylesheet" href="/crm-layout.css?v=1" />
+    <link rel="stylesheet" href="/crm-layout.css?v=3" />
 
 </head>
   <body class="auth-loading feature-loading">
@@ -107,6 +107,8 @@
 <label>Активный заказ <select name="activeOrder"><option value="">Все</option><option value="yes">Да</option><option value="no">Нет</option></select></label>
 <label>Обращение с <input name="from" type="date"></label><label>По <input name="to" type="date"></label>
 <label>История <select name="history"><option value="">Все</option><option value="paid">Ранее платили</option><option value="unpaid">Без записанных оплат</option></select></label>
+<label>Завдання у справі <select name="taskKind"><option value="">Усі</option><option value="documents">Донесення документів</option><option value="translation">Переклад</option><option value="questionnaire">Підготовка анкети</option><option value="interview">Підготовка до співбесіди</option><option value="status">Запит про стан справи</option></select></label>
+<label>Стан завдання <select name="taskState"><option value="">Усі</option><option value="open">Відкриті</option><option value="completed">Завершені</option></select></label>
 <button type="reset">Сбросить</button> <button type="button" id="showFilteredClients">Показать клиентов</button></form></div></details><details data-admin-only><summary><svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 18-7-6 18-4-7-8-4Zm8 4L21 3"/></svg><span>Рассылка выбранной группе</span></summary><div class="tool-body"><form id="campaignForm"><label>Сообщение подписчикам Telegram <textarea name="message" maxlength="3200" required></textarea></label>
 <p>Получатели выбираются фильтрами списка. Для подписки клиент отправляет боту /subscribe, для отмены — /unsubscribe.</p><button>Отправить подписчикам</button></form><p id="campaignStatus" role="status"></p></div></details>
         </div>
@@ -116,11 +118,21 @@
           <div class="role-cards"><article><span>01</span><h3>Суперадминистратор</h3><p>Все данные, настройки, подключения и управление аккаунтами.</p><b>Ваш уровень доступа</b></article><article><span>02</span><h3>Администратор</h3><p>Контент, аналитика, все обращения и Telegram-операторы.</p></article><article><span>03</span><h3>Оператор</h3><p>Только закреплённые клиенты, переписка и закрытие обращений.</p></article></div>
           <div class="access-grid"><article class="card"><h3>Новый сотрудник</h3><form id="createUserForm" class="workspace-form"><label>Имя<input name="name" required maxlength="70" placeholder="Анна Иванова"></label><label>Логин<input name="username" required pattern="[a-zA-Z0-9_.-]{3,40}" placeholder="anna.ivanova" autocomplete="off"></label><label>Роль<select name="role"><option value="admin">Администратор</option><option value="operator">Оператор</option></select></label><label id="operatorLinkLabel" hidden>Telegram-оператор<select name="operatorId" id="operatorLink"></select><small>Если оставить новый оператор, бот создаст Telegram-доступ автоматически и покажет оба пароля.</small></label><button class="primary-btn">Создать аккаунт</button></form><p id="newUserResult" role="status"></p></article><article class="card"><div class="card-header"><h3>Участники команды</h3><button id="refreshUsers" class="ghost-btn">Обновить</button></div><div id="workspaceUsers"></div></article></div>
         </section>
-        <section id="clients" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">BEREG · КЛИЕНТЫ</span><h2>Клиенты и анкеты</h2><p>Анкета с сайта BEREG. Укажите телефон с кодом страны; номера документов не нужны.</p></div><div id="inboxOverdue" role="status"></div><div class="inbox-toolbar"><button type="button" class="crm-test-button" data-crm-test="inbox" aria-label="Тест: пример переписки" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span><input id="crmSearch" placeholder="Поиск по имени или телефону"><button id="crmNew" class="primary-btn">Добавить клиента</button><button id="crmRefresh" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="crmList"></aside><article class="card" style="padding:24px"><h3 id="crmTitle">Новый клиент</h3><form id="crmForm" class="workspace-form"><label>Фамилия<input name="last" type="text" maxlength="70" required></label><label>Имя<input name="first" type="text" maxlength="70" required></label><label>Язык клиента<select name="language"><option value="">Не выбран</option><option value="ru">Русский</option><option value="uk">Українська</option><option value="en">English</option><option value="hu">Magyar</option><option value="vi">Tiếng Việt</option></select></label><label>Услуга <input name="service" maxlength="120"></label><label>Страна проживания <input name="country" maxlength="80"></label>
+        <section id="clients" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">BEREG · КЛИЕНТЫ</span><h2>Клиенты и анкеты</h2><p>Анкета с сайта BEREG. Укажите телефон с кодом страны; номера документов не нужны.</p></div><div id="inboxOverdue" role="status"></div><div class="inbox-toolbar"><input id="crmSearch" type="search" aria-label="Поиск по имени или телефону" placeholder="Поиск по имени или телефону"><button id="crmNew" class="primary-btn">Добавить клиента</button><button id="crmRefresh" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="crmList"></aside><article class="card" style="padding:24px"><h3 id="crmTitle" tabindex="-1">Новый клиент</h3><form id="crmForm" class="workspace-form"><label>Фамилия<input name="last" type="text" maxlength="70" required></label><label>Имя<input name="first" type="text" maxlength="70" required></label><label>Язык клиента<select name="language"><option value="">Не выбран</option><option value="ru">Русский</option><option value="uk">Українська</option><option value="en">English</option><option value="hu">Magyar</option><option value="vi">Tiếng Việt</option></select></label><label>Услуга <input name="service" maxlength="120"></label><label>Страна проживания <input name="country" maxlength="80"></label>
 <label>Статус дела <input name="caseStatus" maxlength="80"></label><label>Активный заказ <select name="activeOrder"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><label>Ваш текущий статус в Венгрии<input name="status" type="text" maxlength="100" ></label><label>С какими документами вы в Венгрии?<input name="papers" type="text" maxlength="150" ></label><label>Дата выезда из Украины<input name="departure" type="date" maxlength="10" ></label><label>Номер телефона для связи<input name="contact" type="tel" maxlength="90" required></label><label>Кратко опишите вашу ситуацию<textarea name="details" maxlength="300" rows="3"></textarea></label><label>Нужна помощь с жильём<select name="housing"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><label>Нужно финансирование имеющегося жилья<select name="funding"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><label>Нужна бесплатная консультация<select name="consultation"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><label>Нужна помощь с восстановлением украинских документов<select name="documents"><option value="">Не указано</option><option value="yes">Да</option><option value="no">Нет</option></select></label><button class="primary-btn">Сохранить анкету</button></form><p id="crmStatus" role="status"></p><form id="officeUpload" hidden>
 <label>Документ из офиса (PDF, JPEG, PNG до 5 МБ)<input type="file" name="scan" accept=".pdf,.jpg,.jpeg,.png" required></label>
 <label>Действителен до <input type="date" name="expiry"></label>
 <button class="ghost-btn">Прикрепить к карточке</button></form><div id="crmDocuments"></div><button type="button" class="crm-test-button" data-crm-test="documents" aria-label="Тест: пример срока документа" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span><div id="crmDialogs"></div><div id="casework" hidden>
+<details id="caseTaskDetails"><summary>Завдання у справі</summary>
+<div id="caseTasks"></div>
+<form id="caseTaskForm" class="workspace-form">
+<label>Тип завдання <select name="kind"><option value="documents">Донесення документів</option><option value="translation">Переклад</option><option value="questionnaire">Підготовка анкети</option><option value="interview">Підготовка до співбесіди</option><option value="status">Запит про стан справи</option></select></label>
+<label id="caseTaskAssignee">Відповідальний працівник <select name="assignee" required></select></label>
+<label><span id="caseTaskDateLabel">Строк виконання</span> <input type="date" name="date" required></label>
+<label>Опис <textarea name="note" rows="2" maxlength="2000"></textarea></label>
+<button class="primary-btn">Додати завдання</button>
+</form><p id="caseTaskStatus" role="status"></p>
+</details>
 <details><summary>Оплаты клиента</summary><div id="casePayments"></div>
 <form id="casePayForm"><label>Услуга <input name="service" maxlength="120" required></label>
 <label>Сумма <input type="number" name="amount" min="0.01" step="0.01" required></label>
@@ -131,8 +143,12 @@
 <form id="caseRequestForm"><label>Диалог клиента <select name="dialogId" required></select></label>
 <label>Что нужно прислать <textarea name="text" maxlength="3200" required></textarea></label>
 <label>Срок подачи <input type="date" name="due" required></label><label>Дата напоминания <input type="date" name="remind" required></label>
-<button>Отправить запрос и запланировать напоминание</button></form></details></div></article></div></section>
-        <section id="inbox" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">КЛИЕНТСКИЙ СЕРВИС</span><h2>Диалоги, которые важны.</h2><p id="inboxScope">Обращения ваших клиентов — от первого вопроса до решения.</p></div><div id="inboxNewMessageNotice" class="crm-notice" role="status" aria-live="polite" hidden></div><div class="inbox-toolbar"><input id="inboxSearch" placeholder="Найти клиента или сообщение" aria-label="Поиск обращений"><select id="inboxFilter" aria-label="Статус обращения"><option value="active">Активные</option><option value="all">Все обращения</option><option value="closed">Закрытые</option></select><button id="enableInboxNotifications" class="ghost-btn audio-button" type="button">🔔 Включить звук</button><button id="refreshInbox" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="inboxList"></aside><article class="card inbox-dialog"><div id="inboxConversation"><div class="workspace-empty">Выберите обращение слева<br><small>Здесь появится история переписки.</small></div></div><details id="replyTemplates">
+<button>Отправить запрос и запланировать напоминание</button></form></details></div></article></div><details class="crm-client-test"><summary>Тест: пример переписки</summary><button type="button" class="crm-test-button" data-crm-test="inbox" aria-label="Тест: пример переписки" aria-expanded="false">Тест</button><span class="crm-test-result" role="status" hidden></span></details></section>
+        <section id="inbox" class="section-panel"><div class="workspace-intro"><span class="workspace-kicker">КЛИЕНТСКИЙ СЕРВИС</span><h2>Диалоги, которые важны.</h2><p id="inboxScope">Обращения ваших клиентов — от первого вопроса до решения.</p></div><details id="staffTasksPanel" class="card staff-tasks-panel" hidden>
+  <summary id="staffTasksSummary">Мої завдання</summary>
+  <div id="staffTasksList"></div>
+  <p id="staffTasksStatus" role="status"></p>
+</details><div id="inboxNewMessageNotice" class="crm-notice" role="status" aria-live="polite" hidden></div><div class="inbox-toolbar"><input id="inboxSearch" placeholder="Найти клиента или сообщение" aria-label="Поиск обращений"><select id="inboxFilter" aria-label="Статус обращения"><option value="active">Активные</option><option value="all">Все обращения</option><option value="closed">Закрытые</option></select><button id="enableInboxNotifications" class="ghost-btn audio-button" type="button">🔔 Включить звук</button><button id="refreshInbox" class="ghost-btn">Обновить</button></div><div class="inbox-layout"><aside class="card" id="inboxList"></aside><article class="card inbox-dialog"><div id="inboxConversation"><div class="workspace-empty">Выберите обращение слева<br><small>Здесь появится история переписки.</small></div></div><details id="replyTemplates">
   <summary>Шаблоны ответов и списки документов</summary>
   <label>Язык
     <select id="replyTemplateLanguage"><option value="uk">Українська</option><option value="hu">Magyar</option><option value="ru">Русский</option><option value="en">English</option></select>
@@ -144,7 +160,11 @@
   <form id="replyTemplateEditor" data-admin-only hidden>
     <button class="ghost-btn" type="button" id="editReplyTemplate">Редактировать выбранный</button>
     <button class="ghost-btn" type="reset">Новый шаблон</button>
-    <label>Автоотправка <select name="event"><option value="">Только вручную</option><option value="first">При первом обращении</option><option value="phrase">При точной фразе клиента</option><option value="status">При изменении статуса дела</option></select></label>
+    <label>Автоотправка <select name="event"><option value="">Только вручную</option><option value="first">При первом обращении</option><option value="phrase">При точной фразе клиента</option>
+      <option value="schedule">Запит про графік</option>
+      <option value="price">Запит про вартість</option>
+      <option value="payment">Запит про оплату</option>
+      <option value="documents_ready">Запит про готовність документів</option><option value="status">При изменении статуса дела</option></select></label>
 <label>Фраза клиента или новый статус <input name="match" maxlength="120"></label>
 <label>Название или тип запроса <input name="title" maxlength="120" required></label>
     <label>Ответ <textarea name="text" maxlength="3500" rows="3"></textarea></label>
@@ -202,7 +222,7 @@
                   </div>
                   <textarea id="aiPrompt" rows="3" placeholder="Например: сопровождение клиента при открытии банковского счёта в Венгрии"></textarea>
                   <label for="aiPostLanguage">Язык маркетингового поста</label>
-                  <select id="aiPostLanguage"><option value="ru">Русский</option><option value="uk">Українська</option><option value="en">English</option><option value="hu">Magyar</option><option value="vi">Tiếng Việt</option></select>
+                  <select id="aiPostLanguage"><option value="uk">Українська</option><option value="ru">Русский</option><option value="en">English</option><option value="hu">Magyar</option><option value="vi">Tiếng Việt</option></select>
                   <div class="ai-options">
                     <label>Цель поста
                       <select id="aiGoal">
@@ -432,9 +452,14 @@
         </section>
         <section id="content" class="section-panel">
           <div class="workspace-intro"><span class="workspace-kicker">КОНТЕНТ</span><h2>План публикаций</h2><p>Сохраняйте идеи и готовьте материалы для социальных сетей. План виден всей команде.</p></div>
+          <div class="content-plan-toolbar">
+            <label>Поиск публикаций <input id="contentPlanSearch" type="search" placeholder="Название или текст"></label>
+            <button id="contentPlanNew" class="primary-btn" type="button" aria-controls="contentPlanEditor" aria-expanded="false">Новая публикация</button>
+          </div>
+          <p id="contentPlanStatus" role="status"></p>
           <div class="content-planner-layout">
-            <article class="card content-planner-editor"><h3 id="contentPlanFormTitle">Новая публикация</h3><form id="contentPlanForm" class="workspace-form"><input name="id" type="hidden"><label>Название<input name="title" maxlength="120" required placeholder="Например, полезный совет недели"></label><label>Площадка<select name="platform"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="telegram">Telegram</option><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select></label><label>Формат<select name="format"><option value="post">Пост</option><option value="story">История</option><option value="video">Видео</option><option value="short">Shorts</option><option value="reel">Reel</option></select></label><label>Дата и время<input name="scheduledAt" type="datetime-local"></label><label>Текст или заметка<textarea name="text" rows="5" maxlength="5000" placeholder="Черновик текста, идея, ссылки или заметки для команды"></textarea></label><div class="content-plan-actions"><button class="primary-btn" type="submit">Сохранить в план</button><button id="contentPlanCancel" class="ghost-btn" type="button" hidden>Отмена</button></div></form><p id="contentPlanStatus" role="status"></p></article>
-            <article class="card content-planner-list"><div class="card-header"><div><span class="growth-card-kicker">КОМАНДНЫЙ ПЛАН</span><h3>Материалы</h3></div><select id="contentPlanFilter" aria-label="Фильтр материалов"><option value="all">Все</option><option value="draft">Черновики</option><option value="planned">Запланированы</option><option value="published">Опубликованы</option></select></div><div id="contentPlanItems" class="content-plan-items"><div class="workspace-empty">Загрузка плана…</div></div></article>
+            <article id="contentPlanEditor" class="card content-planner-editor" hidden><h3 id="contentPlanFormTitle">Новая публикация</h3><form id="contentPlanForm" class="workspace-form"><input name="id" type="hidden"><label>Название<input name="title" maxlength="120" required placeholder="Например, полезный совет недели"></label><label>Площадка<select name="platform"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="telegram">Telegram</option><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select></label><label>Формат<select name="format"><option value="post">Пост</option><option value="story">История</option><option value="video">Видео</option><option value="short">Shorts</option><option value="reel">Reel</option></select></label><label>Дата и время<input name="scheduledAt" type="datetime-local"></label><label>Текст или заметка<textarea name="text" rows="5" maxlength="5000" placeholder="Черновик текста, идея, ссылки или заметки для команды"></textarea></label><div class="content-plan-actions"><button class="primary-btn" type="submit">Сохранить в план</button><button id="contentPlanCancel" class="ghost-btn" type="button">Отмена</button></div></form></article>
+            <article class="card content-planner-list"><div class="card-header"><div><h3>Материалы <small id="contentPlanCount"></small></h3></div><select id="contentPlanFilter" aria-label="Фильтр материалов"><option value="all">Все</option><option value="draft">Черновики</option><option value="planned">Запланированы</option><option value="published">Опубликованы</option></select></div><div id="contentPlanItems" class="content-plan-items"><div class="workspace-empty">Загрузка плана…</div></div></article>
           </div>
         </section>
 
@@ -660,8 +685,8 @@
 
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
-    <script src="/crm-uk.js?v=1"></script><script src="/crm-i18n.js?v=8"></script>
-    <script src="/workspace.js?v=39"></script>
+    <script src="/crm-uk.js?v=2"></script><script src="/crm-i18n.js?v=9"></script>
+    <script src="/workspace.js?v=42"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {

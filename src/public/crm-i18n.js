@@ -35,9 +35,22 @@
  'Мини CRM':'Міні CRM','Проверка входа…':'Перевірка входу…','Журнал действий':'Журнал дій',
  'Защищённая рабочая область BEREG':'Захищена робоча область BEREG'
  };
- const langKey='beregCrmLanguageV2';let language=localStorage.getItem(langKey)||'ru';if(!['en','ru','uk','vi'].includes(language))language='ru';
+ const langKey='beregCrmLanguageV2';let language=localStorage.getItem(langKey)||'uk';if(!['en','ru','uk','vi'].includes(language))language='uk';
  const ukrainian=window.crmUkrainian||{};
- const translate=value=>{const clean=value.trim();const english=pairs[clean]||extra.ruToEn[clean]||clean;const mapped=language==='en'?(pairs[clean]||extra.ruToEn[clean]):language==='ru'?(ruOverrides[clean]||reverse[clean]||reverseExtra[clean]):language==='uk'?(ukrainian[clean]||uk[english]||uk[clean]):(vi[english]||extra.enToVi[english]);return mapped===undefined||mapped===clean?value:value.replace(clean,mapped);};
+ // Keep runtime values intact while translating the surrounding interface text.
+ const ukrainianStatuses = [
+   [/^OpenAI подключён · (.+)$/, 'OpenAI підключено · $1'],
+   [/^Бесплатная модель · (.+)$/, 'Безкоштовна модель · $1'],
+   [/^Подключена: Помощь с получением защиты в Венгрии$/, 'Підключено: Допомога в отриманні захисту в Угорщині'],
+   [/^Подключена: (.+)$/, 'Підключено: $1'],
+   [/^Готово к реальной публикации на странице «Помощь с получением защиты в Венгрии»$/, 'Готово до публікації на сторінці «Допомога в отриманні захисту в Угорщині»'],
+   [/^Готово к реальной публикации на странице «(.+)»$/, 'Готово до публікації на сторінці «$1»']
+ ];
+ function translateUkrainianStatus(text) {
+   const status = ukrainianStatuses.find(([pattern]) => pattern.test(text));
+   return status ? text.replace(...status) : undefined;
+ }
+ const translate=value=>{const clean=value.trim();const english=pairs[clean]||extra.ruToEn[clean]||clean;const mapped=language==='en'?(pairs[clean]||extra.ruToEn[clean]):language==='ru'?(ruOverrides[clean]||reverse[clean]||reverseExtra[clean]):language==='uk'?(ukrainian[clean]||uk[english]||uk[clean]||translateUkrainianStatus(clean)):(vi[english]||extra.enToVi[english]);return mapped===undefined||mapped===clean?value:value.replace(clean,()=>mapped);};
  const textSources=new WeakMap(),attributeSources=new WeakMap(),initialTitle=document.title;
  function walk(root){if(!root)return;const visit=node=>{if(node.nodeType===Node.TEXT_NODE){const current=node.nodeValue;let source=textSources.get(node);if(!source||current!==source.rendered){source={original:current,rendered:current};textSources.set(node,source);}const next=translate(source.original);source.rendered=next;if(current!==next)node.nodeValue=next;return;}if(node.nodeType!==Node.ELEMENT_NODE)return;let attributes=attributeSources.get(node);if(!attributes){attributes=new Map();attributeSources.set(node,attributes);}for(const name of ['placeholder','aria-label','title','alt'])if(node.hasAttribute(name)){const current=node.getAttribute(name);let source=attributes.get(name);if(!source||current!==source.rendered){source={original:current,rendered:current};attributes.set(name,source);}const next=translate(source.original);source.rendered=next;if(current!==next)node.setAttribute(name,next);}for(const child of [...node.childNodes])visit(child);};visit(root);}
  function apply(){document.documentElement.lang=language;document.title=translate(initialTitle);document.querySelectorAll('#crmLanguage').forEach(select=>select.value=language);walk(document.body);}

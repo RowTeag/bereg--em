@@ -18,6 +18,23 @@ function localDay(now) {
   return [part('year'), part('month'), part('day')].join('-');
 }
 
+const taskKinds = {
+  documents: {label:'Донесення документів', days:14},
+  translation: {label:'Переклад', days:2, weekdays:true},
+  questionnaire: {label:'Підготовка анкети', days:2, weekdays:true},
+  interview: {label:'Підготовка до співбесіди', days:7},
+  status: {label:'Запит про стан справи', days:0}
+};
+
+function reminderDay(day, {days, weekdays}) {
+  const cursor = new Date(day);
+  for (let remaining = days; remaining;) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+    if (!weekdays || (cursor.getUTCDay() !== 0 && cursor.getUTCDay() !== 6)) remaining--;
+  }
+  return cursor.toISOString().slice(0, 10);
+}
+
 function mountCasework(app, {directory, clients, support, worker}) {
   const file = path.join(directory, 'casework.json');
   let state = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file,'utf8')) : {payments:[], requests:[]};
@@ -39,6 +56,28 @@ function mountCasework(app, {directory, clients, support, worker}) {
   }
   function tick(now=new Date()) {
     const today=localDay(now);
+    const ownerChat = process.env.BEREG_OVERDUE_CHAT_ID;
+    if (/^-?\d{5,24}$/.test(ownerChat || '')) {
+      for (const item of support.overdueReplies(now.getTime())) {
+        support.enqueueStaffNotice('overdue-' + item.id + '-' + item.since, ownerChat,
+          'Прострочена відповідь у CRM · ' + item.name);
+      }
+    }
+    for (const task of state.tasks || []) {
+      if (task.completedOn || task.notificationQueued || task.remindOn > today || task.kind === 'status') continue;
+      const operator = support.state.operators?.find(person => person.id === task.assignee && person.enabled && person.chatId);
+      if (!operator) continue;
+      const eventId = 'case-task-' + task.id;
+      if (!support.state.staffEvents?.[eventId]) {
+        const client = clients.list().find(person => person.id === task.clientId);
+        if (!client) continue;
+        support.enqueueStaffNotice(eventId, operator.chatId,
+          `${taskKinds[task.kind].label} · ${client.last} ${client.first}
+Строк: ${task.date}
+${task.note}`);
+      }
+      commit({...state, tasks: state.tasks.map(row => row.id === task.id ? {...row, notificationQueued:true} : row)});
+    }
     for(const item of state.requests) {
       if(item.done)continue;
       enqueue(item,'request');
@@ -55,7 +94,7 @@ function mountCasework(app, {directory, clients, support, worker}) {
     }catch{commit({...state,calendarError:'Не удалось обновить календарь Reservio.'});}
     finally{calendarPending=false;}
   }
-  async function runTick(){try{tick();await syncCalendar();}catch(error){console.error('CRM reminders:',error.message);}}
+  async function runTick(){try{tick();await support.flush();await syncCalendar();}catch(error){console.error('CRM reminders:',error.message);}}
   app.locals.beregCaseworkTick=runTick;
   if(!worker)setInterval(runTick,30000).unref();
 
@@ -100,6 +139,55 @@ function mountCasework(app, {directory, clients, support, worker}) {
     try { res.json(saveBookings(await fetchBookings(url))); }
     catch (error) { res.status(400).json({error: error.message}); }
   });
+  app.get('/api/casework/my-tasks', (req, res) => {
+    const operator = req.panelUser.operatorId && support.state.operators?.find(
+      person => person.id === req.panelUser.operatorId && person.enabled);
+    const today = localDay(new Date());
+    if (!operator) return res.json({today,tasks:[]});
+    const names = new Map(clients.list().map(client => [client.id, [client.last,client.first].filter(Boolean).join(' ')]));
+    const tasks = (state.tasks || [])
+      .filter(task => task.assignee === operator.id && !task.completedOn && names.has(task.clientId))
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .map(task => ({id:task.id,kind:task.kind,date:task.date,remindOn:task.remindOn,note:task.note,clientName:names.get(task.clientId)}));
+    res.json({today,tasks});
+  });
+  app.get('/api/casework/staff', (req, res) => {
+    res.json((support.state.operators || [])
+      .map(({id, name, chatId, enabled}) => ({id, name, enabled, telegram: Boolean(chatId)})));
+  });
+  app.post('/api/casework/tasks', (req, res) => {
+    try {
+      const {id, clientId, kind, assignee, note = '', date: target} = req.body || {};
+      if (!/^[a-f0-9-]{36}$/i.test(id || '') || !Object.hasOwn(taskKinds, kind) ||
+          typeof note !== 'string' || note.length > 2000 ||
+          !clients.list().some(client => client.id === clientId)) throw Error('Перевірте дані завдання.');
+      const existing = (state.tasks || []).find(row => row.id === id);
+      if (existing) return res.status(existing.clientId === clientId ? 200 : 409).json({id});
+      if (kind !== 'status' && !support.state.operators?.some(person => person.id === assignee && person.enabled)) {
+        throw Error('Виберіть активного працівника.');
+      }
+      const day = date(target);
+      const task = {id, clientId, kind, note:note.trim(), date:day,
+        assignee:kind === 'status' ? null : assignee, remindOn:reminderDay(day, taskKinds[kind])};
+      commit({...state, tasks:[...(state.tasks || []), task]});
+      res.status(201).json({id});
+    } catch (error) { res.status(400).json({error:error.message}); }
+  });
+  app.post('/api/casework/tasks/:id/complete', (req, res) => {
+    const row = (state.tasks || []).find(task => task.id === req.params.id);
+    if (!row || (req.panelUser.role === 'operator' && (
+      !req.panelUser.operatorId || row.assignee !== req.panelUser.operatorId ||
+      !support.state.operators?.some(person => person.id === row.assignee && person.enabled)
+    ))) return res.sendStatus(404);
+    if (row.completedOn) return res.json({ok:true});
+    try {
+      const completedOn = req.panelUser.role === 'operator'
+        ? localDay(new Date()) : date(req.body?.date || localDay(new Date()));
+      if (row.kind === 'status' && completedOn < row.date) throw Error('Дата відповіді має бути не раніше дати запиту.');
+      commit({...state, tasks:state.tasks.map(task => task.id === row.id ? {...task, completedOn} : task)});
+      res.json({ok:true});
+    } catch (error) { res.status(400).json({error:error.message}); }
+  });
   app.get('/api/casework',(req,res)=>res.json(state));
   app.post('/api/casework/:kind',(req,res)=>{
     try {
@@ -128,7 +216,11 @@ function mountCasework(app, {directory, clients, support, worker}) {
         Object.assign(row,{dialogId:dialog.id,text,remind,due,done:false});
       }
       commit({...state,[kind]:[...state[kind],row]});
-      if(kind==='requests'){tick();support.flush().catch(()=>{});}
+      if(kind==='requests'){
+        enqueue(row,'request');
+        if(row.remind<=localDay(new Date()))enqueue(row,'reminder');
+        support.flush().catch(()=>{});
+      }
       res.status(201).json({id:row.id});
     }catch(error){res.status(400).json({error:error.message});}
   });

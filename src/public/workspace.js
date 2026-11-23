@@ -8,7 +8,7 @@
   window.__beregAuth={user,csrf};
   document.body.dataset.role=user.role;
   const loadModule=src=>new Promise((resolve,reject)=>{const script=document.createElement('script'),timer=setTimeout(()=>{script.remove();reject(new Error('Timed out loading '+src));},7000);script.src=src;script.onload=()=>{clearTimeout(timer);resolve();};script.onerror=()=>{clearTimeout(timer);reject(new Error('Could not load '+src));};document.body.append(script);});
-  const modules=user.role==='operator'?['/app.js?v=42']:['/app.js?v=42','/business.js?v=7'];
+  const modules=user.role==='operator'?['/app.js?v=43']:['/app.js?v=43','/business.js?v=7'];
   const $=id=>document.getElementById(id),roles={superadmin:'Суперадминистратор',admin:'Администратор',operator:'Оператор'};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeExternalUrl=value=>{try{const url=new URL(String(value||''));return ['https:','http:'].includes(url.protocol)?url.href:'';}catch{return '';}};
@@ -76,14 +76,23 @@
       const day=(c.createdAt||'').slice(0,10);
       if((filters.from&&day<filters.from)||(filters.to&&day>filters.to))return false;
       if(filters.history){const paid=caseData.payments.some(p=>p.clientId===c.id);if(paid!==(filters.history==='paid'))return false;}
+      if (filters.taskKind || filters.taskState) {
+        const matchingTask = (caseData.tasks || []).some(task => task.clientId === c.id &&
+          (!filters.taskKind || task.kind === filters.taskKind) &&
+          (!filters.taskState || Boolean(task.completedOn) === (filters.taskState === 'completed')));
+        if (!matchingTask) return false;
+      }
       return true;
     };
-    const q=$('crmSearch').value.toLowerCase();const filtered=crmRecords.filter(matches).filter(c=>[c.first,c.last,c.contact].join(' ').toLowerCase().includes(q));visibleClientIds=filtered.map(c=>c.id);$('crmList').innerHTML=filtered.map(c=>`<button class="inbox-item" data-crm="${esc(c.id)}"><span class="client-initial">${esc(c.first[0])}</span><span><strong>${esc(c.last)} ${esc(c.first)}</strong><small>${esc(c.contact)} · ${esc(clientLanguageLabel(c.language))}</small></span></button>`).join('')||'<div class="workspace-empty">Клиентов пока нет</div>';for(const b of $('crmList').querySelectorAll('[data-crm]'))b.onclick=()=>openCrm(b.dataset.crm);}
+    const q=$('crmSearch').value.toLowerCase();const filtered=crmRecords.filter(matches).filter(c=>[c.first,c.last,c.contact].join(' ').toLowerCase().includes(q));visibleClientIds=filtered.map(c=>c.id);$('crmList').innerHTML=filtered.map(c=>`<button class="inbox-item ${c.id===crmId?'selected':''}" aria-current="${c.id===crmId}" data-crm="${esc(c.id)}"><span class="client-initial">${esc(c.first[0])}</span><span><strong>${esc(c.last)} ${esc(c.first)}</strong><small>${esc(c.contact)} · ${esc(clientLanguageLabel(c.language))}</small></span></button>`).join('')||'<div class="workspace-empty">Клиентов пока нет</div>';for(const b of $('crmList').querySelectorAll('[data-crm]'))b.onclick=()=>showCrmEditor(b.dataset.crm);}
   let caseData={payments:[],requests:[]};
   $('clientFilters').oninput=()=>renderCrm();
   $('clientFilters').onsubmit=e=>e.preventDefault();
   $('clientFilters').onreset=()=>setTimeout(renderCrm,0);
-  $('clientFilters').elements.history.onchange=()=>refreshCasework().then(renderCrm).catch(e=>{$('crmStatus').textContent=e.message;});
+  for (const filter of ['history', 'taskKind', 'taskState']) {
+    $('clientFilters').elements[filter].onchange = () => refreshCasework()
+      .catch(error => { $('crmStatus').textContent = error.message; });
+  }
   $('showFilteredClients').onclick=()=>{
     navigate('clients');
     $('clients').scrollIntoView({block:'start'});
@@ -149,6 +158,7 @@
     const client=crmRecords.find(c=>c.id===crmId);
     $('casework').hidden=!client;
     if(!client)return;
+    drawCaseTasks();
     const select=$('caseRequestForm').elements.dialogId, previous=select.value;
     select.replaceChildren(new Option('Выберите диалог',''));
     for(const d of client.dialogs||[])if(client.dialogIds?.includes(d.id))select.add(new Option((d.provider||'Telegram')+' · '+d.name,d.id));
@@ -171,6 +181,125 @@
       $('caseRequests').append(line);
     }
   }
+  const taskForm = $('caseTaskForm');
+  const taskLabels = Object.fromEntries([...taskForm.elements.kind.options].map(option => [option.value, option.textContent]));
+  const taskStatus = $('caseTaskStatus');
+  let taskStaff = [];
+  function updateTaskFields() {
+    const isStatus = taskForm.elements.kind.value === 'status';
+    $('caseTaskAssignee').hidden = isStatus;
+    taskForm.elements.assignee.disabled = isStatus;
+    $('caseTaskDateLabel').textContent = isStatus ? 'Дата запиту' : 'Строк виконання';
+  }
+  taskForm.elements.kind.onchange = updateTaskFields;
+  $('caseTaskDetails').ontoggle = async () => {
+    if (!$('caseTaskDetails').open) return;
+    try {
+      taskStaff = await api('/api/casework/staff');
+      const select = taskForm.elements.assignee;
+      const previous = select.value;
+      select.replaceChildren(new Option('Виберіть працівника', ''));
+      for (const person of taskStaff.filter(person => person.enabled)) {
+        select.add(new Option(person.name + (person.telegram ? '' : ' · Telegram не підключено'), person.id));
+      }
+      select.value = previous || '';
+      drawCaseTasks();
+    } catch (error) { taskStatus.textContent = error.message; }
+  };
+  taskForm.oninput = () => { delete taskForm.dataset.operation; };
+  taskForm.onsubmit = async event => {
+    event.preventDefault();
+    const clientId = crmId;
+    const button = taskForm.querySelector('button');
+    const fields = Object.fromEntries(new FormData(taskForm));
+    taskForm.dataset.operation ||= crypto.randomUUID();
+    button.disabled = true;
+    try {
+      await post('/api/casework/tasks', {...fields, id:taskForm.dataset.operation, clientId});
+      if (crmId === clientId) {
+        taskForm.reset();
+        updateTaskFields();
+        delete taskForm.dataset.operation;
+        taskStatus.textContent = 'Завдання додано.';
+      }
+      await refreshCasework();
+    } catch (error) {
+      if (crmId === clientId) taskStatus.textContent = error.message;
+    } finally { button.disabled = false; }
+  };
+  function drawCaseTasks() {
+    renderCaseTasks($('caseTasks'), (caseData.tasks || []).filter(task => task.clientId === crmId));
+  }
+  function renderCaseTasks(container, rows, {refresh=refreshCasework, status=taskStatus}={}) {
+    container.replaceChildren();
+    if (!rows.length) {
+      container.textContent = 'Завдань поки немає.';
+      return;
+    }
+    for (const task of rows) {
+      const article = document.createElement('article');
+      const heading = document.createElement('strong');
+      heading.textContent = [taskLabels[task.kind],task.clientName].filter(Boolean).join(' · ');
+      const dates = document.createElement('p');
+      const isStatus = task.kind === 'status';
+      dates.textContent = isStatus ? 'Запит від ' + task.date : 'Строк ' + task.date + ' · нагадування ' + task.remindOn;
+      if (task.completedOn) dates.textContent += (isStatus ? ' · відповідь ' : ' · завершено ') + task.completedOn;
+      article.append(heading, dates);
+      const assignee = taskStaff.find(person => person.id === task.assignee);
+      if (assignee) {
+        const assigned = document.createElement('p');
+        assigned.textContent = 'Відповідальний працівник · ' + assignee.name;
+        article.append(assigned);
+      }
+      if (task.note) {
+        const note = document.createElement('p');
+        note.textContent = task.note;
+        article.append(note);
+      }
+      if (!task.completedOn) {
+        const complete = document.createElement('form');
+        let date;
+        if (isStatus) {
+          const label = document.createElement('label');
+          label.textContent = 'Дата відповіді';
+          date = document.createElement('input');
+          date.type = 'date'; date.required = true; date.min = task.date;
+          label.append(date);
+          complete.append(label);
+        }
+        const button = document.createElement('button');
+        button.className = 'ghost-btn';
+        button.textContent = isStatus ? 'Записати відповідь' : 'Позначити завершеним';
+        complete.append(button);
+        complete.onsubmit = async event => {
+          event.preventDefault();
+          button.disabled = true;
+          try {
+            await post('/api/casework/tasks/' + task.id + '/complete', date ? {date:date.value} : {});
+            await refresh();
+          } catch (error) { status.textContent = error.message; }
+          finally { button.disabled = false; }
+        };
+        article.append(complete);
+      }
+      container.append(article);
+    }
+  }
+  async function loadStaffTasks() {
+    const panel = $('staffTasksPanel'), status = $('staffTasksStatus');
+    panel.hidden = false;
+    try {
+      const {tasks,today} = await api('/api/casework/my-tasks');
+      const attention = tasks.filter(task => task.remindOn <= today).length;
+      $('staffTasksSummary').textContent = 'Мої завдання · ' + tasks.length +
+        (attention ? ' · потребують уваги: ' + attention : '');
+      if (panel.open) renderCaseTasks($('staffTasksList'), tasks, {refresh:loadStaffTasks,status});
+      status.textContent = '';
+    } catch (error) { status.textContent = error.message; }
+  }
+  $('staffTasksPanel').ontoggle = () => {
+    if ($('staffTasksPanel').open) loadStaffTasks();
+  };
   function drawReport(){
     const totals=new Map(),from=$('reportFrom').value,to=$('reportTo').value;
     const box=$('caseTotals');box.replaceChildren();
@@ -185,7 +314,7 @@
     if(!rows.length)box.textContent='За период нет записанных оплат.';
   }
   async function refreshCasework(){
-    caseData=await api('/api/casework');drawCasework();drawReport();drawBookings();
+    caseData=await api('/api/casework');drawCasework();drawReport();drawBookings();renderCrm();
   }
   $('caseReport').ontoggle=()=>{if($('caseReport').open)refreshCasework().catch(e=>{$('caseTotals').textContent=e.message;});};
   $('reportFrom').oninput=drawReport;$('reportTo').oninput=drawReport;
@@ -202,7 +331,26 @@
       }catch(e){$('crmStatus').textContent=e.message;}finally{button.disabled=false;}
     };
   }
+  function showCrmEditor(id) {
+    openCrm(id);
+    const title = $('crmTitle');
+    title.focus({preventScroll:true});
+    if (window.matchMedia('(max-width: 760px)').matches) title.scrollIntoView({block:'start'});
+  }
+
   async function openCrm(id){
+    for (const row of $('crmList').querySelectorAll('[data-crm]')) {
+      const current = row.dataset.crm === id;
+      row.classList.toggle('selected', current);
+      row.setAttribute('aria-current', String(current));
+    }
+    if (crmId !== id) {
+      $('caseTaskDetails').open = false;
+      taskForm.reset();
+      updateTaskFields();
+      delete taskForm.dataset.operation;
+      taskStatus.textContent = '';
+    }
     if(crmId!==id){for(const name of ['casePayForm','caseRequestForm']){$(name).reset();delete $(name).dataset.operation;}}
     crmId=id;drawCasework();if(id)refreshCasework().catch(e=>{$('crmStatus').textContent=e.message;});$('officeUpload').reset();crmForm.reset();$('crmStatus').textContent='';const c=crmRecords.find(x=>x.id===id);$('crmTitle').textContent=c?c.last+' '+c.first:'Новый клиент';$('crmDialogs').replaceChildren();renderCrmDocuments(c);if(!c)return;for(const e of crmForm.elements)if(e.name)e.value=c[e.name]||'';
   $('crmDialogs').innerHTML=`<h3>Связаться с клиентом</h3><p>Ссылки открывают приложение. Наличие аккаунта по номеру не проверено.</p><div class="crm-contact-actions">${c.phone?`<a class="ghost-btn" href="https://wa.me/${encodeURIComponent(c.phone)}" target="_blank" rel="noopener">WhatsApp ↗</a> <a class="ghost-btn" href="https://t.me/+${encodeURIComponent(c.phone)}" target="_blank" rel="noopener">Telegram ↗</a> <a class="ghost-btn" href="tel:+${encodeURIComponent(c.phone)}">Позвонить</a>`:'<span>Телефон не указан в обращении</span>'}</div><p>Переписка в панели появляется после обращения клиента через подключённый канал.</p>`;
@@ -252,7 +400,7 @@
   };
   async function loadCrm(){try{const d=await api('/api/clients');const applications=d.clients.flatMap(client=>(client.attachments||[]).filter(a=>a.source!=='office').map(attachment=>({key:client.id+':'+attachment.id,client,attachment})));announceCrmApplications(applications.filter(a=>!crmAcknowledgedApplications.has(a.key)));crmRecords=d.clients;renderExpiryWarnings();renderCrm();if(crmId)renderCrmDocuments(crmRecords.find(c=>c.id===crmId));const sync=await api('/api/clients-sync');if(sync.error)$('crmStatus').textContent='Синхронизация: '+sync.error;}catch(e){$('crmStatus').textContent=e.message;}}
   setInterval(()=>{if(!document.hidden)loadCrm();},15000);
-  $('crmSearch').oninput=renderCrm;$('crmNew').onclick=()=>openCrm(null);$('crmRefresh').onclick=async()=>{try{await post('/api/clients-sync');await loadCrm();$('crmStatus').textContent='Заявки с сайта обновлены';}catch(e){$('crmStatus').textContent=e.message;}};
+  $('crmSearch').oninput=renderCrm;$('crmNew').onclick=()=>showCrmEditor(null);$('crmRefresh').onclick=async()=>{try{await post('/api/clients-sync');await loadCrm();$('crmStatus').textContent='Заявки с сайта обновлены';}catch(e){$('crmStatus').textContent=e.message;}};
   crmForm.onsubmit=async e=>{e.preventDefault();const b=crmForm.querySelector('button');b.disabled=true;try{const d=await api('/api/clients'+(crmId?'/'+encodeURIComponent(crmId):''),{method:crmId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(crmForm)))});await loadCrm();await openCrm(d.client.id);$('crmStatus').textContent='Анкета сохранена';}catch(e){$('crmStatus').textContent=e.message;}finally{b.disabled=false;}};
 
   let clients=[],selected=null,insertedTemplate=null;
@@ -302,7 +450,7 @@
   supportedReplyLanguages.forEach(code=>{if(!crmClientLanguage.querySelector(`option[value="${code}"]`)){const option=document.createElement('option');option.value=code;option.textContent=languageNames[code];crmClientLanguage.append(option);}});
   const interfaceLanguage=()=>supportedReplyLanguages.includes(window.crmLanguage?.())?window.crmLanguage():'ru';
   let replyLanguage=interfaceLanguage();
-  const clientLanguageLabel=code=>{const ui=window.crmLanguage?.()||'ru',label=languageNames[code]||({en:'Not selected',ru:'Не выбран',vi:'Chưa chọn'})[ui]||'Не выбран';return `${({en:'Client language',ru:'Язык клиента',vi:'Ngôn ngữ khách hàng'})[ui]||'Язык клиента'} · ${label}`;};
+  const clientLanguageLabel=code=>{const ui=window.crmLanguage?.()||'uk',label=(code==='ru'&&ui==='uk'?'Російська':languageNames[code])||({en:'Not selected',ru:'Не выбран',uk:'Не вибрано',vi:'Chưa chọn'})[ui]||'Не выбран';return `${({en:'Client language',ru:'Язык клиента',uk:'Мова клієнта',vi:'Ngôn ngữ khách hàng'})[ui]||'Язык клиента'} · ${label}`;};
   function renderList(){const q=$('inboxSearch').value.toLowerCase(),filter=$('inboxFilter').value;const visible=clients.filter(c=>(filter==='all'||(filter==='closed'?c.status==='closed':c.status!=='closed'))&&[c.name,c.id,c.contact,...c.history.map(h=>h.text)].join(' ').toLowerCase().includes(q));$('inboxList').innerHTML=visible.length?visible.map(c=>`<button class="inbox-item ${selected===c.id?'selected':''}" data-client="${esc(c.id)}" data-audit-dialog="${esc(c.id)}"><span class="client-initial source-${esc(c.provider||'telegram')}">${esc(c.name.slice(0,1))}</span><span><strong>${esc(c.name)} <i class="source-pill source-${esc(c.provider||'telegram')}">${esc(providerName(c))}</i></strong><small>${esc(c.history[c.history.length-1]?.text||'Нет сообщений')}</small><em>${stateLabel(c.status)} · ${esc(c.operatorName)} · ${esc(clientLanguageLabel(c.language))}</em></span></button>`).join(''):'<div class="workspace-empty">Обращений пока нет<small>Новые сообщения появятся здесь.</small></div>';$('inboxList').querySelectorAll('[data-client]').forEach(b=>b.onclick=()=>{selected=b.dataset.client;renderList();loadConversation(selected);});}
   let inboxTeam;
   function renderDialogTools(client){
@@ -327,7 +475,7 @@
     add.onclick=()=>{if(note.value.trim())manage({note:note.value});};
     move.onclick=()=>{if(select.value)manage({operatorId:select.value});};
     tools.append(note,add,select,move);
-    if(!client.demo&&(client.transport==='chatwoot'||!client.provider||client.provider==='telegram')){
+    if(!client.demo&&(client.transport==='chatwoot'||!client.provider||['telegram','facebook','whatsapp'].includes(client.provider))){
       const file=document.createElement('input'),send=document.createElement('button');
       file.type='file';send.textContent='Отправить файл клиенту';
       send.onclick=async()=>{
@@ -419,21 +567,84 @@
   let contentPlanItems=[];
   const planPlatforms={instagram:'Instagram',facebook:'Facebook',telegram:'Telegram',youtube:'YouTube',tiktok:'TikTok'},planFormats={post:'Пост',story:'История',video:'Видео',short:'Shorts',reel:'Reel'},planStatuses={draft:'Черновик',planned:'Запланировано',published:'Опубликовано'};
   const planDate=value=>value?new Date(value).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Без даты';
-  function resetContentPlanForm(){const form=$('contentPlanForm');form.reset();form.elements.id.value='';$('contentPlanFormTitle').textContent='Новая публикация';$('contentPlanCancel').hidden=true;}
-  function editContentPlanItem(item){const form=$('contentPlanForm');for(const [key,value] of Object.entries(item))if(form.elements[key])form.elements[key].value=value||'';$('contentPlanFormTitle').textContent='Изменить публикацию';$('contentPlanCancel').hidden=false;form.scrollIntoView({behavior:'smooth',block:'start'});}
+  function resetContentPlanForm(){const form=$('contentPlanForm');form.reset();form.elements.id.value='';$('contentPlanFormTitle').textContent='Новая публикация';$('contentPlanEditor').hidden=true;$('contentPlanNew').setAttribute('aria-expanded','false');}
+  function showContentPlanForm(){
+    $('contentPlanEditor').hidden=false;
+    $('contentPlanNew').setAttribute('aria-expanded','true');
+    $('contentPlanEditor').scrollIntoView({block:'nearest'});
+    $('contentPlanForm').elements.title.focus({preventScroll:true});
+  }
+  $('contentPlanNew').onclick=()=>{resetContentPlanForm();showContentPlanForm();};
+  function editContentPlanItem(item){const form=$('contentPlanForm');for(const [key,value] of Object.entries(item))if(form.elements[key])form.elements[key].value=value||'';$('contentPlanFormTitle').textContent='Изменить публикацию';showContentPlanForm();}
   async function updateContentPlanItem(item,patch){await api('/api/content-plan/'+encodeURIComponent(item.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...item,...patch})});await loadContentPlan();}
-  function renderContentPlan(){const filter=$('contentPlanFilter').value,items=contentPlanItems.filter(item=>filter==='all'||item.status===filter);$('contentPlanItems').innerHTML=items.length?items.map(item=>`<article class="content-plan-item"><div class="content-plan-item-head"><span class="content-plan-platform">${esc(planPlatforms[item.platform]||item.platform)} · ${esc(planFormats[item.format]||item.format)}</span><span class="content-plan-status status-${esc(item.status)}">${esc(planStatuses[item.status]||item.status)}</span></div><h4>${esc(item.title)}</h4><time>${esc(planDate(item.scheduledAt))}</time>${item.text?`<p>${esc(item.text)}</p>`:''}<div class="content-plan-item-actions"><button class="ghost-btn" type="button" data-plan-edit="${esc(item.id)}">Изменить</button>${item.status!=='published'?`<button class="ghost-btn" type="button" data-plan-publish="${esc(item.id)}">Опубликовано</button>`:''}<button class="ghost-btn" type="button" data-plan-delete="${esc(item.id)}">Удалить</button></div></article>`).join(''):'<div class="workspace-empty">В этом списке пока нет материалов.</div>';$('contentPlanItems').querySelectorAll('[data-plan-edit]').forEach(button=>button.onclick=()=>editContentPlanItem(contentPlanItems.find(item=>item.id===button.dataset.planEdit)));$('contentPlanItems').querySelectorAll('[data-plan-publish]').forEach(button=>button.onclick=()=>{const item=contentPlanItems.find(row=>row.id===button.dataset.planPublish);updateContentPlanItem(item,{status:'published'}).catch(error=>$('contentPlanStatus').textContent=error.message);});$('contentPlanItems').querySelectorAll('[data-plan-delete]').forEach(button=>button.onclick=async()=>{if(!confirm('Удалить материал из плана?'))return;try{await api('/api/content-plan/'+encodeURIComponent(button.dataset.planDelete),{method:'DELETE'});await loadContentPlan();}catch(error){$('contentPlanStatus').textContent=error.message;}});}
+  function renderContentPlan(){
+    const filter = $('contentPlanFilter').value;
+    const query = $('contentPlanSearch').value.trim().toLowerCase();
+    const items = contentPlanItems.filter(item =>
+      (filter === 'all' || item.status === filter) &&
+      [item.title,item.text,planPlatforms[item.platform]].some(value => String(value || '').toLowerCase().includes(query))
+    );
+    const list = $('contentPlanItems');
+    $('contentPlanCount').textContent = items.length;
+    list.innerHTML = items.length ? items.map(item => `
+      <article class="content-plan-item">
+        <div class="content-plan-item-head">
+          <span class="content-plan-platform">${esc(planPlatforms[item.platform] || item.platform)} · ${esc(planFormats[item.format] || item.format)}</span>
+          <span class="content-plan-status status-${esc(item.status)}">${esc(planStatuses[item.status] || item.status)}</span>
+        </div>
+        <h4>${esc(item.title)}</h4>
+        <time>${esc(planDate(item.scheduledAt))}</time>
+        ${item.text ? `<p>${esc(item.text)}</p>` : ''}
+        <div class="content-plan-item-actions">
+          <button class="ghost-btn" type="button" data-plan-edit="${esc(item.id)}">Изменить</button>
+          ${item.status !== 'published' ? `<button class="ghost-btn" type="button" data-plan-publish="${esc(item.id)}">Отметить опубликованным</button>` : ''}
+          <button class="ghost-btn" type="button" data-plan-delete="${esc(item.id)}">Удалить</button>
+        </div>
+      </article>`).join('') : '<div class="workspace-empty">По выбранным условиям материалов нет.</div>';
+    for (const button of list.querySelectorAll('[data-plan-edit]')) {
+      button.onclick = () => editContentPlanItem(contentPlanItems.find(item => item.id === button.dataset.planEdit));
+    }
+    for (const button of list.querySelectorAll('[data-plan-publish]')) {
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          const item = contentPlanItems.find(row => row.id === button.dataset.planPublish);
+          await updateContentPlanItem(item,{status:'published'});
+        } catch (error) { $('contentPlanStatus').textContent = error.message; }
+        finally { button.disabled = false; }
+      };
+    }
+    for (const button of list.querySelectorAll('[data-plan-delete]')) {
+      button.onclick = async () => {
+        if (!confirm('Удалить материал из плана?')) return;
+        button.disabled = true;
+        try {
+          await api('/api/content-plan/' + encodeURIComponent(button.dataset.planDelete),{method:'DELETE'});
+          if ($('contentPlanForm').elements.id.value === button.dataset.planDelete) resetContentPlanForm();
+          await loadContentPlan();
+        } catch (error) { $('contentPlanStatus').textContent = error.message; }
+        finally { button.disabled = false; }
+      };
+    }
+  }
   async function loadContentPlan(){try{const result=await api('/api/content-plan');contentPlanItems=result.items||[];renderContentPlan();}catch(error){$('contentPlanStatus').textContent=error.message;}}
   function renderPublicationCalendar(){const root=$('publicationCalendar'),today=new Date();today.setHours(0,0,0,0);const days=Array.from({length:7},(_,index)=>{const date=new Date(today);date.setDate(date.getDate()+index);const key=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;const items=contentPlanItems.filter(item=>item.status==='planned'&&item.scheduledAt?.slice(0,10)===key);return `<article class="day-card"><h4>${index===0?'Сегодня':index===1?'Завтра':date.toLocaleDateString('ru-RU',{weekday:'long'})}</h4><small>${date.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}</small>${items.length?items.map(item=>`<button type="button" class="calendar-plan-entry" data-calendar-edit="${esc(item.id)}"><strong>${esc(item.title)}</strong><span>${esc(planDate(item.scheduledAt))} · ${esc(planPlatforms[item.platform]||item.platform)}</span></button>`).join(''):'<p class="calendar-empty">Публикаций нет</p>'}</article>`;}).join('');root.innerHTML=days;root.querySelectorAll('[data-calendar-edit]').forEach(button=>button.onclick=()=>{const item=contentPlanItems.find(row=>row.id===button.dataset.calendarEdit);navigate('content');editContentPlanItem(item);});}
   async function loadPublicationCalendar(){try{const result=await api('/api/content-plan');contentPlanItems=result.items||[];renderPublicationCalendar();}catch(error){$('publicationCalendar').textContent=error.message;}}
-  $('contentPlanForm').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;try{const data=Object.fromEntries(new FormData(form));const id=data.id;delete data.id;if(!id)data.status=data.scheduledAt?'planned':'draft';await api('/api/content-plan'+(id?'/'+encodeURIComponent(id):''),{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});$('contentPlanStatus').textContent='Материал сохранён в общем плане.';resetContentPlanForm();await loadContentPlan();}catch(error){$('contentPlanStatus').textContent=error.message;}finally{button.disabled=false;}};
-  $('contentPlanCancel').onclick=resetContentPlanForm;$('contentPlanFilter').onchange=renderContentPlan;$('calendarRefresh').onclick=loadPublicationCalendar;
+  $('contentPlanForm').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type="submit"]');button.disabled=true;try{const data=Object.fromEntries(new FormData(form));const id=data.id;delete data.id;data.status=contentPlanItems.find(item=>item.id===id)?.status==='published'?'published':data.scheduledAt?'planned':'draft';await api('/api/content-plan'+(id?'/'+encodeURIComponent(id):''),{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});$('contentPlanStatus').textContent='Материал сохранён в общем плане.';resetContentPlanForm();await loadContentPlan();}catch(error){$('contentPlanStatus').textContent=error.message;}finally{button.disabled=false;}};
+  $('contentPlanCancel').onclick=()=>{resetContentPlanForm();$('contentPlanNew').focus();};
+  $('contentPlanSearch').oninput=renderContentPlan;
+  $('contentPlanFilter').onchange=renderContentPlan;$('calendarRefresh').onclick=loadPublicationCalendar;
   async function loadUsers(){if(user.role!=='superadmin')return;try{const [u,t]=await Promise.all([api('/api/users'),api('/api/telegram/status')]);$('workspaceUsers').innerHTML=u.users.map(x=>`<div class="user-row"><div><strong>${esc(x.name)}</strong><small>${esc(x.username)} · ${roles[x.role]} · ${x.enabled?'Активен':'Отключён'}</small></div>${x.role==='superadmin'?'<span class="owner-pill">Владелец</span>':`<div><button class="ghost-btn" data-reset="${x.id}">Новый пароль</button><button class="ghost-btn" data-toggle="${x.id}">${x.enabled?'Отключить':'Включить'}</button></div>`}</div>`).join('');$('operatorLink').innerHTML='<option value="">Новый Telegram-оператор — создать автоматически</option>'+t.operators.filter(o=>o.enabled&&!u.users.some(x=>x.enabled&&x.operatorId===o.id)).map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');$('workspaceUsers').querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{try{await post('/api/users/'+b.dataset.toggle+'/toggle');await loadUsers();}catch(e){$('newUserResult').textContent=e.message;}});$('workspaceUsers').querySelectorAll('[data-reset]').forEach(b=>b.onclick=async()=>{try{const d=await post('/api/users/'+b.dataset.reset+'/reset-password');$('newUserResult').textContent='Новый пароль: '+d.password+'. Предыдущие сеансы завершены. Сохраните пароль.';}catch(e){$('newUserResult').textContent=e.message;}});}catch(e){$('newUserResult').textContent=e.message;}}
   $('createUserForm').role.onchange=e=>{$('operatorLinkLabel').hidden=e.target.value!=='operator';$('operatorLink').required=false;};
   $('createUserForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button');b.disabled=true;let createdTelegramOperator=null;try{const payload=Object.fromEntries(new FormData(f));if(payload.role==='operator'){const existing=await api('/api/users');if(existing.users.some(item=>item.username.toLowerCase()===payload.username.toLowerCase()))throw Error('Этот логин уже существует.');if(!payload.operatorId)createdTelegramOperator=await post('/api/telegram/operators',{name:payload.name});if(createdTelegramOperator)payload.operatorId=createdTelegramOperator.id;}const d=await post('/api/users',payload);$('newUserResult').textContent='Аккаунт CRM создан. Логин: '+d.user.username+' · пароль CRM: '+d.password+'. Сохраните его. '+(createdTelegramOperator?'Доступ в Telegram-бот: /login '+createdTelegramOperator.password+'. Передайте сотруднику оба пароля.':'');f.reset();$('operatorLinkLabel').hidden=true;$('operatorLink').required=false;await loadUsers();}catch(e){$('newUserResult').textContent=e.message+(createdTelegramOperator?' Telegram-оператор уже создан. Его вход: /login '+createdTelegramOperator.password+'. Выберите его в списке и повторите создание аккаунта.':'');await loadUsers();}finally{b.disabled=false;}};
   $('refreshUsers').onclick=loadUsers;
   document.body.classList.remove('auth-loading','feature-loading');
   await Promise.all(modules.map(loadModule));
-  if(user.role==='operator')navigate('inbox');pollInboxNotifications();
+  if(user.role==='operator'){
+    navigate('inbox');
+    loadStaffTasks();
+    setInterval(loadStaffTasks,60000);
+  }
+  pollInboxNotifications();
   setInterval(()=>pollInboxNotifications(),10000);
 })().catch(error=>{document.body.classList.remove('auth-loading','feature-loading');const message=document.createElement('div');message.setAttribute('role','alert');message.style.cssText='position:fixed;z-index:2000;top:12px;left:12px;right:12px;padding:14px 18px;border:1px solid #806b45;border-radius:12px;background:#191815;color:#f3e4bd;box-shadow:0 6px 24px #0008';const text=document.createElement('span');text.textContent=error.name==='AbortError'?'Sign-in is taking too long. Reload the page and try again.':`Workspace could not start: ${error.message||'reload the page and try again.'}`;const button=document.createElement('button');button.type='button';button.textContent='Reload';button.style.cssText='margin-left:12px;border:1px solid #9b7937;border-radius:8px;padding:7px 10px;background:#ffd269;color:#171511;cursor:pointer';button.onclick=()=>location.reload();message.append(text,button);document.querySelector('.main-panel')?.prepend(message);});
