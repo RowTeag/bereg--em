@@ -208,3 +208,95 @@ body:has(.login-layout) {
   outline: 2px solid var(--desk-accent);
   outline-offset: 3px;
 }
+
+/* Facebook composer */
+#facebookComposer {
+  min-width: 0;
+}
+
+#facebookComposer > .card-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+#facebookComposer .chip {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#facebookComposer .tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#facebookComposer .ai-heading {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 10px;
+}
+
+#facebookComposer .ai-heading label,
+#facebookComposer .ai-options label {
+  margin-bottom: 0;
+}
+
+#facebookComposer .ai-options {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+
+#facebookComposer .publication-language {
+  margin-top: 0;
+}
+
+#facebookComposer .ai-settings {
+  margin: 12px 0;
+  border-block: 1px solid var(--desk-line);
+}
+
+#facebookComposer .ai-settings summary {
+  padding-block: 12px;
+  cursor: pointer;
+  color: var(--desk-text);
+}
+
+#facebookComposer .ai-settings .ai-options {
+  margin: 0 0 12px;
+}
+
+#facebookComposer .ai-options select,
+#facebookComposer .tab,
+#facebookComposer .ai-actions button,
+#facebookComposer .upload-label {
+  min-height: 44px;
+}
+
+#facebookComposer .publication-draft-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+#facebookComposer :is(button, select, summary, textarea):focus-visible {
+  outline: 2px solid var(--desk-text);
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  #facebookComposer.card {
+    padding: 14px;
+  }
+
+  #facebookComposer .ai-box {
+    padding: 12px;
+  }
+
+  #facebookComposer :is(select, textarea) {
+    font-size: 16px;
+  }
+
+  #facebookComposer .ai-actions button {
+    width: 100%;
+  }
+}
