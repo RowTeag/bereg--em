@@ -25,6 +25,7 @@ function mountPanelAuth(app,{directory,onLogin=()=>{},onLogout=()=>{}}) {
     '/login',
     '/login.html',
     '/login.css',
+    '/crm-layout.css',
     '/login.js',
     '/privacy.html',
     '/data-deletion.html',

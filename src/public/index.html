@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BEREG · Workspace</title>
+    <title>BEREG · Рабочая область</title>
     <link rel="stylesheet" href="./styles.css?v=22" />
   <link rel="stylesheet" href="/workspace.css?v=9" />
     <link rel="stylesheet" href="/crm-notice.css?v=1" />
@@ -12,49 +12,9 @@
     <link rel="stylesheet" href="/business.css?v=1" />
   <link rel="stylesheet" href="/redesign.css?v=9" />
   <link rel="stylesheet" href="/polish.css?v=1" />
-  <link rel="stylesheet" href="/crm-tests.css"><style>
-.crm-tools {
-  margin: 16px 0 24px;
-  border: 1px solid #385043;
-  border-radius: 18px;
-  background: #14251c;
-  color: #eff6ec;
-  overflow: hidden;
-}
-.crm-tools details + details { border-top: 1px solid #304438; }
-.crm-tools summary {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  min-height: 56px;
-  padding: 9px 18px;
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.35;
-  list-style: none;
-  cursor: pointer;
-}
-.crm-tools summary::-webkit-details-marker { display: none; }
-.crm-tools .tool-icon { width: 32px; height: 32px; padding: 7px; box-sizing: border-box; border-radius: 9px; background: #253e2e; color: #b6deb4; flex: none; }
-.crm-tools summary::after { content: ""; flex: none; width: 7px; height: 7px; border: solid #b1c7b3; border-width: 0 1.5px 1.5px 0; margin: 0 3px 3px auto; transform: rotate(45deg); }
-.crm-tools details[open] > summary { background: #1e3326; }
-.crm-tools details[open] > summary::after { transform: rotate(225deg); margin-bottom: -4px; }
-.crm-tools summary:focus-visible { outline: 2px solid #b3d6a9; outline-offset: -3px; }
-.crm-tools .tool-body { padding: 16px 18px; display: grid; gap: 12px; }
-.crm-tools form { display: grid; gap: 12px; }
-.crm-tools label { display: grid; gap: 5px; min-width: 0; color: #bed1c1; font-size: 14px; }
-.crm-tools :is(input,select,textarea) { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; background: #101e16; color: #eff6ec; border: 1px solid #49604f; border-radius: 8px; padding: 9px; font: inherit; }
-.crm-tools textarea { min-height: 78px; resize: vertical; }
-.crm-tools button { justify-self: start; }
-.crm-tools form > button { padding: 10px 16px; border-radius: 9px; background: #b0d6a8; color: #14251c; font-weight: 650; }
-.crm-tools .tool-body :is(p,div):empty { display: none; }
-.crm-tools .tool-body p { margin: 0; }
-@media (min-width: 650px) {
-  .crm-tools #clientFilters { grid-template-columns: repeat(2,minmax(0,1fr)); }
-}
-</style>
+  <link rel="stylesheet" href="/crm-tests.css">
+    <link rel="stylesheet" href="/crm-layout.css?v=1" />
+
 </head>
   <body class="auth-loading feature-loading">
     <div class="app-shell">
@@ -700,8 +660,8 @@
 
     <script src="/audit-client.js?v=2"></script>
     <script src="/crm-extra-translations.js?v=1"></script>
-    <script src="/crm-uk.js?v=1"></script><script src="/crm-i18n.js?v=7"></script>
-    <script src="/workspace.js?v=38"></script>
+    <script src="/crm-uk.js?v=1"></script><script src="/crm-i18n.js?v=8"></script>
+    <script src="/workspace.js?v=39"></script>
     <script src="/feature-loader.js?v=9"></script>
     <script>
       setTimeout(() => {

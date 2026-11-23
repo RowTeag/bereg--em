@@ -702,7 +702,7 @@ async function loadDashboard() {
     document.getElementById('dashboardFbFollows').textContent=formatMetric(overview.followsThisWeek);
     renderChange('reachChange',changes.reach,'% vs last week');
     renderChange('engagementChange',changes.engagement,'% vs last week');
-    renderChange('ctrChange',changes.followers,' this week');
+    renderChange('ctrChange',changes.followers,' за неделю');
     renderChart(analytics.chart||[]);
     refreshStatus();
   }).catch(error=>{
@@ -721,7 +721,7 @@ async function loadDashboard() {
     document.getElementById('dashboardYtRetention').textContent=analytics.live?`${formatYoutubeNumber(overview.averageViewPercentage,1)}%`:'—';
     refreshStatus();
   }).catch(()=>{
-    document.getElementById('followersChange').textContent='YouTube metrics are temporarily unavailable';
+    document.getElementById('followersChange').textContent='Статистика YouTube временно недоступна';
     document.getElementById('dashboardYtHours').textContent='—';
     document.getElementById('dashboardYtSubscribers').textContent='—';
     document.getElementById('dashboardYtRetention').textContent='—';
