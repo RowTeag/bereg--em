@@ -44,7 +44,8 @@ const sectionTitles = {
   analytics: 'Analytics',
   advisor: 'AI advisor',
   settings: 'Settings',
-  employees: 'Employees'
+  employees: 'Employees',
+  'response-templates': 'Шаблоны ответов'
 };
 
 let currentTab = 'text';
@@ -317,7 +318,7 @@ function showSection(targetId) {
   sections.forEach(section => section.classList.toggle('active', section.id === targetId));
   window.syncSidebarGroups?.(targetId);
   const topbarActions = document.querySelector('.topbar-actions');
-  if (topbarActions) topbarActions.hidden = ['settings', 'advisor', 'youtube-publish', 'growth-center', 'employees', 'inbox', 'clients', 'team-access'].includes(targetId);
+  if (topbarActions) topbarActions.hidden = ['settings', 'advisor', 'youtube-publish', 'growth-center', 'employees', 'inbox', 'clients', 'team-access', 'response-templates'].includes(targetId);
   if (targetId === 'inbox' && crmNotice) crmNotice.hidden = true;
 
   if (sectionTitles[targetId]) {

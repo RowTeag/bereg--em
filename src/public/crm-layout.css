@@ -586,3 +586,17 @@ body:has(.login-layout) {
 }
 
 #inbox #inboxCaseTasksArea { margin: 12px 0 0; }
+
+
+#sharedReplyTemplates { grid-template-columns: minmax(0, 1fr); }
+#sharedReplyTemplates > .tool-body { border-top: 0; }
+#sharedReplyTemplates .inbox-template-fields,
+#sharedReplyTemplates .inbox-tool-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#sharedReplyTemplates .inbox-template-fields > label { flex: 1 1 12rem; }
+#sharedReplyTemplates .inbox-template-management {
+  border-top: 1px solid var(--desk-line);
+}

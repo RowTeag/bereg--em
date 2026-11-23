@@ -8,7 +8,7 @@
   window.__beregAuth={user,csrf};
   document.body.dataset.role=user.role;
   const loadModule=src=>new Promise((resolve,reject)=>{const script=document.createElement('script'),timer=setTimeout(()=>{script.remove();reject(new Error('Timed out loading '+src));},7000);script.src=src;script.onload=()=>{clearTimeout(timer);resolve();};script.onerror=()=>{clearTimeout(timer);reject(new Error('Could not load '+src));};document.body.append(script);});
-  const modules=user.role==='operator'?['/app.js?v=43']:['/app.js?v=43','/business.js?v=7'];
+  const modules=user.role==='operator'?['/app.js?v=44']:['/app.js?v=44','/business.js?v=7'];
   const $=id=>document.getElementById(id),roles={superadmin:'Суперадминистратор',admin:'Администратор',operator:'Оператор'};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeExternalUrl=value=>{try{const url=new URL(String(value||''));return ['https:','http:'].includes(url.protocol)?url.href:'';}catch{return '';}};
@@ -21,7 +21,9 @@
   document.body.classList.remove('auth-loading');
   if(user.role==='admin')document.querySelector('[data-target="settings"]').hidden=true;
   const navGroups=[...document.querySelectorAll('.nav-group')];
+  let syncTemplateLocation;
   function syncSidebarGroups(target){
+    syncTemplateLocation?.(target);
     let activeGroup=null;
     navGroups.forEach(group=>{
       const visibleItems=[...group.querySelectorAll('.nav-item')].filter(item=>!item.hidden);
@@ -36,7 +38,7 @@
     navGroups.forEach(item=>{item.classList.toggle('open',next&&item===group);item.querySelector('.nav-group-toggle').setAttribute('aria-expanded',String(next&&item===group));});
   }));
   if(user.role==='operator'){
-    const operatorSections=new Set(['dashboard','inbox','content','calendar','youtube-publish','growth-center']);
+    const operatorSections=new Set(['dashboard','inbox','response-templates','content','calendar','youtube-publish','growth-center']);
     document.querySelectorAll('.nav-item').forEach(e=>e.hidden=!operatorSections.has(e.dataset.target));
     const facebookPublishLink=document.querySelector('[data-target="dashboard"] span:last-child');
     if(facebookPublishLink)facebookPublishLink.textContent='Facebook';
@@ -52,9 +54,8 @@
   }
   syncSidebarGroups(user.role==='operator'?'inbox':(document.querySelector('.section-panel.active')?.id||'dashboard'));
   $('logoutBtn').onclick=async()=>{await post('/api/auth/logout');location.replace('/login');};
-  function navigate(target){document.querySelectorAll('.section-panel').forEach(e=>e.classList.toggle('active',e.id===target));document.querySelectorAll('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.target===target));syncSidebarGroups(target);if(target==='inbox'||target==='team-access'){$('pageTitle').textContent=target==='inbox'?'Обращения':'Команда и доступ';document.querySelector('.topbar-actions').hidden=true;}if(target==='content')$('pageTitle').textContent='Контент';if(target==='calendar')$('pageTitle').textContent='Календарь';if(target==='employees')$('pageTitle').textContent='Employees';document.body.classList.remove('mobile-menu-open');if(target==='clients'){loadCrm();$('pageTitle').textContent='Клиенты';document.querySelector('.topbar-actions').hidden=true;}placeCaseTaskPanel();if(target==='inbox'){if(user.role!=='operator'&&!crmRecords.length)void loadCrm();loadInbox();}if(target==='team-access')loadUsers();if(target==='content')loadContentPlan();if(target==='calendar')loadPublicationCalendar();}
+  function navigate(target){document.querySelectorAll('.section-panel').forEach(e=>e.classList.toggle('active',e.id===target));document.querySelectorAll('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.target===target));syncSidebarGroups(target);if(target==='inbox'||target==='team-access'){$('pageTitle').textContent=target==='inbox'?'Обращения':'Команда и доступ';document.querySelector('.topbar-actions').hidden=true;}if(target==='response-templates'){$('pageTitle').textContent='Шаблоны ответов';document.querySelector('.topbar-actions').hidden=true;}if(target==='content')$('pageTitle').textContent='Контент';if(target==='calendar')$('pageTitle').textContent='Календарь';if(target==='employees')$('pageTitle').textContent='Employees';document.body.classList.remove('mobile-menu-open');if(target==='clients'){loadCrm();$('pageTitle').textContent='Клиенты';document.querySelector('.topbar-actions').hidden=true;}placeCaseTaskPanel();if(target==='inbox'){if(user.role!=='operator'&&!crmRecords.length)void loadCrm();loadInbox();}if(target==='team-access')loadUsers();if(target==='content')loadContentPlan();if(target==='calendar')loadPublicationCalendar();}
   document.querySelectorAll('.nav-item').forEach(e=>e.addEventListener('click',()=>{if(!e.hidden)navigate(e.dataset.target);}));
-  if(user.role==='operator')$('mobileMenuBtn').onclick=()=>{const on=document.body.classList.toggle('mobile-menu-open');$('mobileMenuBtn').setAttribute('aria-expanded',on);};
   let crmRecords=[],crmId=null,crmAcknowledgedApplications=new Set();
   const crmAcknowledgementKey='bereg_crm_acknowledged_'+user.id;
   try{const saved=JSON.parse(localStorage.getItem(crmAcknowledgementKey)||'[]');if(Array.isArray(saved))crmAcknowledgedApplications=new Set(saved);}catch{}
@@ -600,6 +601,16 @@
       renderTemplates(templateSelect.value);
     } catch(error) { templateStatus.textContent=error.message; }
   }
+  const templateBody=templatePanel.querySelector('.tool-body');
+  const sharedTemplatePanel=$('sharedReplyTemplates');
+  syncTemplateLocation=target=>{
+    const standalone=target==='response-templates';
+    const container=standalone?sharedTemplatePanel:templatePanel;
+    if(templateBody.parentElement===container)return;
+    container.append(templateBody);
+    $('insertReplyTemplate').hidden=standalone;
+    if(standalone)void loadTemplates();
+  };
   templatePanel.ontoggle=()=>{if(templatePanel.open)loadTemplates();};
   templateLanguage.onchange=()=>{templateEditor.reset();renderTemplates();};
   templateSelect.onchange=previewTemplate;
@@ -608,7 +619,7 @@
     catch { templateStatus.textContent='Выделите текст шаблона и скопируйте его вручную.'; }
   };
   $('insertReplyTemplate').onclick=()=>{
-    if(!selected){templateStatus.textContent='Выберите диалог.';return;}
+    if($('inboxReplyForm').hidden){templateStatus.textContent='Выберите диалог.';return;}
     const reply=$('inboxReply');
     if(reply.value.trim()){templateStatus.textContent='Очистите поле ответа перед вставкой или скопируйте шаблон.';return;}
     reply.value=templateText();
