@@ -423,9 +423,19 @@
     }catch(error){if(crmId===clientId)status.textContent=error.message;}
     finally{button.disabled=false;}
   };
-  async function loadCrm(){try{const d=await api('/api/clients');const applications=d.clients.flatMap(client=>(client.attachments||[]).filter(a=>a.source!=='office').map(attachment=>({key:client.id+':'+attachment.id,client,attachment})));announceCrmApplications(applications.filter(a=>!crmAcknowledgedApplications.has(a.key)));crmRecords=d.clients;placeCaseTaskPanel();renderExpiryWarnings();renderCrm();if(crmId)renderCrmDocuments(crmRecords.find(c=>c.id===crmId));const sync=await api('/api/clients-sync');if(sync.error)$('crmStatus').textContent='Синхронизация: '+sync.error;}catch(e){$('crmStatus').textContent=e.message;}}
+  async function loadCrm(){try{const d=await api('/api/clients');const applications=d.clients.flatMap(client=>(client.attachments||[]).filter(a=>a.source!=='office').map(attachment=>({key:client.id+':'+attachment.id,client,attachment})));announceCrmApplications(applications.filter(a=>!crmAcknowledgedApplications.has(a.key)));crmRecords=d.clients;placeCaseTaskPanel();renderExpiryWarnings();renderCrm();if(crmId)renderCrmDocuments(crmRecords.find(c=>c.id===crmId));return true;}catch(e){$('crmStatus').textContent=e.message;return false;}}
   setInterval(()=>{if(!document.hidden)loadCrm();},15000);
-  $('crmSearch').oninput=renderCrm;$('crmNew').onclick=()=>openCrm(null);$('crmRefresh').onclick=async()=>{try{await post('/api/clients-sync');await loadCrm();$('crmStatus').textContent='Заявки с сайта обновлены';}catch(e){$('crmStatus').textContent=e.message;}};
+  $('crmSearch').oninput=renderCrm;
+  $('crmNew').onclick=()=>openCrm(null);
+  $('crmRefresh').onclick=async()=>{
+    try{
+      await post('/api/clients-sync');
+    }catch{
+      $('crmStatus').textContent='Не удалось обновить заявки. Попробуйте ещё раз.';
+      return;
+    }
+    if(await loadCrm())$('crmStatus').textContent='Заявки с сайта обновлены';
+  };
   crmForm.onsubmit=async e=>{e.preventDefault();const b=crmForm.querySelector('button');b.disabled=true;try{const d=await api('/api/clients'+(crmId?'/'+encodeURIComponent(crmId):''),{method:crmId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(crmForm)))});await loadCrm();await openCrm(d.client.id);$('crmStatus').textContent='Анкета сохранена';}catch(e){$('crmStatus').textContent=e.message;}finally{b.disabled=false;}};
 
   let clients=[],selected=null,insertedTemplate=null;
