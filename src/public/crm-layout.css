@@ -439,3 +439,32 @@ body:has(.login-layout) {
 @media (max-width: 380px) {
   #inbox .inbox-template-fields { grid-template-columns: minmax(0, 1fr); }
 }
+
+.crm-tools.crm-casework-tools {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 0;
+}
+
+.crm-casework-tools .tool-body > div:not(:empty) {
+  display: grid;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+
+.crm-casework-tools .tool-body > div > p {
+  padding: 10px 12px;
+  border: 1px solid var(--desk-line);
+  border-radius: 10px;
+}
+
+.crm-casework-tools form > button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.crm-casework-tools textarea { resize: vertical; }
+
+@media (max-width: 760px) {
+  .crm-casework-tools form > button { width: 100%; }
+}
