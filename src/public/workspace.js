@@ -115,10 +115,6 @@
   function drawBookings(){
     const box=$('reservioBookings');box.replaceChildren();
     const entries=new Map([...(caseData.bookings||[]),...(caseData.syncedBookings||[])].map(b=>[b.id,b]));
-    if(caseData.calendarError||caseData.calendarSync){
-      $('reservioStatus').textContent=caseData.calendarError||'';
-      if(!caseData.calendarError) appendStatus('reservioStatus','Синхронизировано',new Date(caseData.calendarSync).toLocaleString());
-    }
     for(const event of [...entries.values()].sort((a,b)=>a.start.localeCompare(b.start))){
       const line=document.createElement('p');
       line.textContent=[event.start,event.zone,event.title,event.status].filter(Boolean).join(' · ');
@@ -127,24 +123,24 @@
     }
     if(!box.childElementCount)box.textContent='Записи ещё не импортированы.';
   }
-  $('reservioCalendar').ontoggle=()=>{if($('reservioCalendar').open)refreshCasework().catch(e=>{$('reservioStatus').textContent=e.message;});};
+  $('reservioCalendar').ontoggle=()=>{if($('reservioCalendar').open)refreshCasework().catch(()=>{});};
   function appendStatus(id, label, value){
     const span=document.createElement('span');
     span.textContent=label;
     $(id).replaceChildren(span, ': ', String(value));
   }
-  function handleReservioImport(id, importRecords){
+  function handleReservioImport(id, importRecords, showStatus){
     $(id).onsubmit=async event=>{
       event.preventDefault();
       const form=event.currentTarget,button=form.querySelector('button');
       button.disabled=true;
-      $('reservioStatus').textContent='Импорт записей…';
+      if(showStatus)$('reservioStatus').textContent='Импорт записей…';
       try{
         const result=await importRecords(form);
         form.reset();
         await refreshCasework();
-        appendStatus('reservioStatus','Обработано записей',result.count);
-      }catch(error){$('reservioStatus').textContent=error.message;}
+        if(showStatus)appendStatus('reservioStatus','Обработано записей',result.count);
+      }catch(error){if(showStatus)$('reservioStatus').textContent=error.message;}
       finally{button.disabled=false;}
     };
   }
@@ -154,8 +150,8 @@
     if(file.size>2000000)throw Error('Выберите файл календаря до 2 МБ.');
     const format=file.name.toLowerCase().endsWith('.csv')?'csv':'ics';
     return post('/api/casework/reservio/import',{[format]:await file.text()});
-  });
-  handleReservioImport('reservioLinkImport',form=>post('/api/casework/reservio/import-link',{url:form.elements.url.value.trim()}));
+  },true);
+  handleReservioImport('reservioLinkImport',form=>post('/api/casework/reservio/import-link',{url:form.elements.url.value.trim()}),false);
   function drawCasework(){
     const client=crmRecords.find(c=>c.id===crmId);
     $('casework').hidden=!client;
@@ -423,18 +419,13 @@
     }catch(error){if(crmId===clientId)status.textContent=error.message;}
     finally{button.disabled=false;}
   };
-  async function loadCrm(){try{const d=await api('/api/clients');const applications=d.clients.flatMap(client=>(client.attachments||[]).filter(a=>a.source!=='office').map(attachment=>({key:client.id+':'+attachment.id,client,attachment})));announceCrmApplications(applications.filter(a=>!crmAcknowledgedApplications.has(a.key)));crmRecords=d.clients;placeCaseTaskPanel();renderExpiryWarnings();renderCrm();if(crmId)renderCrmDocuments(crmRecords.find(c=>c.id===crmId));return true;}catch(e){$('crmStatus').textContent=e.message;return false;}}
-  setInterval(()=>{if(!document.hidden)loadCrm();},15000);
+  async function loadCrm({showError=true}={}){try{const d=await api('/api/clients');const applications=d.clients.flatMap(client=>(client.attachments||[]).filter(a=>a.source!=='office').map(attachment=>({key:client.id+':'+attachment.id,client,attachment})));announceCrmApplications(applications.filter(a=>!crmAcknowledgedApplications.has(a.key)));crmRecords=d.clients;placeCaseTaskPanel();renderExpiryWarnings();renderCrm();if(crmId)renderCrmDocuments(crmRecords.find(c=>c.id===crmId));}catch(e){if(showError)$('crmStatus').textContent=e.message;}}
+  setInterval(()=>{if(!document.hidden)loadCrm({showError:false});},15000);
   $('crmSearch').oninput=renderCrm;
   $('crmNew').onclick=()=>openCrm(null);
   $('crmRefresh').onclick=async()=>{
-    try{
-      await post('/api/clients-sync');
-    }catch{
-      $('crmStatus').textContent='Не удалось обновить заявки. Попробуйте ещё раз.';
-      return;
-    }
-    if(await loadCrm())$('crmStatus').textContent='Заявки с сайта обновлены';
+    await post('/api/clients-sync').catch(()=>{});
+    await loadCrm({showError:false});
   };
   crmForm.onsubmit=async e=>{e.preventDefault();const b=crmForm.querySelector('button');b.disabled=true;try{const d=await api('/api/clients'+(crmId?'/'+encodeURIComponent(crmId):''),{method:crmId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(crmForm)))});await loadCrm();await openCrm(d.client.id);$('crmStatus').textContent='Анкета сохранена';}catch(e){$('crmStatus').textContent=e.message;}finally{b.disabled=false;}};
 
