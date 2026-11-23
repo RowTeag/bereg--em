@@ -338,7 +338,7 @@
     body.className='tool-body';
     tools.open=host.dataset.dialogId===client.id&&Boolean(host.firstElementChild?.open);
     host.dataset.dialogId=client.id;
-    summary.textContent='Действия с диалогом';
+    summary.textContent='Действия с диалогом и внутренние комментарии';
     tools.append(summary,body);
     function field(label,control,button){
       const row=document.createElement('div');
