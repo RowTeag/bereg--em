@@ -1,6 +1,7 @@
 (()=>{
  const pairs={
  'Шаблоны ответов':'Reply templates',
+ 'Проверка':'Checking',
  'Обзор':'Overview','Клиенты':'Clients','Обращения':'Inbox','Каналы поддержки':'Support channels','Публикации':'Publishing','Контент':'Content','Календарь':'Calendar','Развитие':'Growth','Рост и продажи':'Growth and sales','Аналитика':'Analytics','AI-советник':'AI advisor','Управление':'Management','Команда и доступ':'Team and access','Настройки':'Settings','Рабочая панель':'Workspace','Панель управления':'Dashboard','Выйти из аккаунта ↗':'Log out ↗','Состояние кампании':'Campaign status','Загружаю показатели подключённых каналов…':'Loading connected channel metrics…','Экспорт':'Export','+ Новый пост':'+ New post','Telegram · поддержка':'Telegram · Support','Публикация в YouTube':'YouTube publishing',
  'КЛИЕНТСКИЙ СЕРВИС':'CUSTOMER SERVICE','Диалоги, которые важны.':'Conversations that matter.','Обращения ваших клиентов — от первого вопроса до решения.':'Your customers’ conversations, from first question to resolution.','Найти клиента или сообщение':'Search customers or messages','Активные':'Active','Все обращения':'All conversations','Закрытые':'Closed','Обновить':'Refresh','Выберите обращение слева':'Select a conversation','Здесь появится история переписки.':'Conversation history will appear here.','Ответ клиенту':'Reply to customer','Напишите ответ…':'Write a reply…','Отправить ответ':'Send reply','Закрыть обращение':'Close conversation','Обращений пока нет':'No conversations yet','Новые сообщения появятся здесь.':'New messages will appear here.','Поиск обращений':'Search conversations','Статус обращения':'Conversation status',
  'КЛИЕНТЫ':'CUSTOMERS','BEREG · КЛИЕНТЫ':'BEREG · CUSTOMERS','Клиенты и анкеты':'Customers and applications','Анкета с сайта BEREG. Укажите телефон с кодом страны; номера документов не нужны.':'Applications from the BEREG website. Enter a phone number with country code; document numbers are not needed.','Поиск по имени или телефону':'Search by name or phone','Добавить клиента':'Add customer','Новый клиент':'New customer','Фамилия':'Last name','Имя':'First name','Ваш текущий статус в Венгрии':'Current status in Hungary','С какими документами вы в Венгрии?':'Which documents do you have in Hungary?','Дата выезда из Украины':'Date of departure from Ukraine','Номер телефона для связи':'Contact phone number','Кратко опишите вашу ситуацию':'Briefly describe your situation','Нужна помощь с жильём':'Need help with housing','Нужно финансирование имеющегося жилья':'Need help funding current housing','Нужна бесплатная консультация':'Need a free consultation','Нужна помощь с восстановлением украинских документов':'Need help replacing Ukrainian documents','Сохранить анкету':'Save application','Документы':'Documents','Связаться с клиентом':'Contact customer','Ссылки открывают приложение. Наличие аккаунта по номеру не проверено.':'Links open the relevant app. Account availability for this number has not been checked.','Позвонить':'Call','Переписка в панели появляется после обращения клиента через подключённый канал.':'Messages appear here after the customer contacts you through a connected channel.','Связать существующий диалог':'Link an existing conversation','Выберите существующий диалог':'Select an existing conversation','Связать с клиентом':'Link to customer','Клиентов пока нет':'No customers yet',
@@ -38,6 +39,11 @@
  'Защищённая рабочая область BEREG':'Захищена робоча область BEREG'
  };
  Object.assign(uk,{
+  'Online': 'Підключено',
+  'No live data': 'Немає актуальних даних',
+  'Live metrics:': 'Актуальні показники:',
+  'The dashboard remains available while other channels load.': 'Панель доступна, поки завантажуються дані інших каналів.',
+  'Connect a channel to load live metrics. Posts and the rest of the CRM load independently.': 'Підключіть канал, щоб бачити актуальні показники. Публікації та інші розділи CRM доступні окремо.',
   "Employees": "Працівники",
   "TEAM MANAGEMENT": "УПРАВЛІННЯ КОМАНДОЮ",
   "Maintain staff records separately from CRM login accounts.": "Ведіть облік працівників окремо від облікових записів CRM.",
@@ -68,6 +74,14 @@
   "Request failed": "Не вдалося виконати запит"
  });
  Object.assign(vi,{
+  'Campaign status': 'Trạng thái chiến dịch',
+  'Checking': 'Đang kiểm tra',
+  'Loading connected channel metrics…': 'Đang tải số liệu từ các kênh đã kết nối…',
+  'Online': 'Đã kết nối',
+  'No live data': 'Chưa có dữ liệu trực tiếp',
+  'Live metrics:': 'Số liệu trực tiếp:',
+  'The dashboard remains available while other channels load.': 'Bảng điều khiển vẫn dùng được trong khi tải dữ liệu từ các kênh khác.',
+  'Connect a channel to load live metrics. Posts and the rest of the CRM load independently.': 'Kết nối một kênh để xem số liệu trực tiếp. Bài đăng và các mục khác của CRM vẫn tải riêng.',
   "Employees": "Nhân viên",
   "TEAM MANAGEMENT": "QUẢN LÝ NHÂN SỰ",
   "Maintain staff records separately from CRM login accounts.": "Quản lý hồ sơ nhân viên riêng với tài khoản đăng nhập CRM.",

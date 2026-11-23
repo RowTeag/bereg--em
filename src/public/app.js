@@ -678,9 +678,15 @@ async function loadDashboard() {
     const badge=document.getElementById('liveDataBadge');
     badge.textContent=sources.length?'Online':'No live data';
     badge.className=`chip ${sources.length?'success':'warning'}`;
-    document.getElementById('liveDataSummary').textContent=sources.length
-      ?`Live metrics: ${sources.join(' and ')}. The dashboard remains available while other channels load.`
-      :'Connect a channel to load live metrics. Posts and the rest of the CRM load independently.';
+    const summary=document.getElementById('liveDataSummary');
+    if(sources.length){
+      const channels=document.createElement('span');
+      channels.setAttribute('translate','no');
+      channels.textContent=sources.join(', ');
+      summary.replaceChildren('Live metrics: ',channels,'. ','The dashboard remains available while other channels load.');
+    }else{
+      summary.textContent='Connect a channel to load live metrics. Posts and the rest of the CRM load independently.';
+    }
   };
   const readJson=async url=>{
     const response=await fetch(url);

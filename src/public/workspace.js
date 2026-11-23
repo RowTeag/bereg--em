@@ -8,7 +8,7 @@
   window.__beregAuth={user,csrf};
   document.body.dataset.role=user.role;
   const loadModule=src=>new Promise((resolve,reject)=>{const script=document.createElement('script'),timer=setTimeout(()=>{script.remove();reject(new Error('Timed out loading '+src));},7000);script.src=src;script.onload=()=>{clearTimeout(timer);resolve();};script.onerror=()=>{clearTimeout(timer);reject(new Error('Could not load '+src));};document.body.append(script);});
-  const modules=user.role==='operator'?['/app.js?v=45']:['/app.js?v=45','/business.js?v=8'];
+  const modules=user.role==='operator'?['/app.js?v=46']:['/app.js?v=46','/business.js?v=8'];
   const $=id=>document.getElementById(id),roles={superadmin:'Суперадминистратор',admin:'Администратор',operator:'Оператор'};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeExternalUrl=value=>{try{const url=new URL(String(value||''));return ['https:','http:'].includes(url.protocol)?url.href:'';}catch{return '';}};
